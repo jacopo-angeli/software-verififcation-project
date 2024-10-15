@@ -1,0 +1,65 @@
+import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, Numeral, Variable } from "../model/while+/arithmetic_expression";
+import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator, Boolean } from "../model/while+/boolean_expression";
+import { Assignment, Concatenation, DecrementOperator, ForLoop, IfThenElse, IncrementOperator, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
+
+// Helper function for indentation
+function indent(level: number): string {
+  return ' '.repeat(level * 2);
+}
+
+// Pretty printer function for ArithmeticExpression
+function prettyPrintArithmetic(expr: ArithmeticExpression, level: number = 0): string {
+  if (expr instanceof Numeral) {
+    return `${indent(level)}Numeral: ${expr.value}`;
+  } else if (expr instanceof Variable) {
+    return `${indent(level)}Variable: ${expr.name}`;
+  } else if (expr instanceof ArithmeticBinaryOperator) {
+    return `${indent(level)}BinaryOperator: ${expr.operator.value}\n${prettyPrintArithmetic(expr.leftOperand, level + 1)}\n${prettyPrintArithmetic(expr.rightOperand, level + 1)}`;
+  } else if (expr instanceof ArithmeticUnaryOperator) {
+    return `${indent(level)}UnaryOperator: ${expr.operator.value}\n${prettyPrintArithmetic(expr.operand, level + 1)}`;
+  } else {
+    throw new Error("Unknown arithmetic expression type");
+  }
+}
+
+// Pretty printer function for BooleanExpression
+function prettyPrintBoolean(expr: BooleanExpression, level: number = 0): string {
+  if (expr instanceof Boolean) {
+    return `${indent(level)}Boolean: ${expr.value}`;
+  } else if (expr instanceof BooleanBinaryOperator) {
+    return `${indent(level)}BinaryOperator: ${expr.operator.value}\n${prettyPrintArithmetic(expr.leftOperand, level + 1)}\n${prettyPrintArithmetic(expr.rightOperand, level + 1)}`;
+  } else if (expr instanceof BooleanConcatenation) {
+    return `${indent(level)}BooleanConcatenation: ${expr.operator.value}\n${prettyPrintBoolean(expr.leftOperand, level + 1)}\n${prettyPrintBoolean(expr.rightOperand, level + 1)}`;
+  } else if (expr instanceof BooleanUnaryOperator) {
+    return `${indent(level)}UnaryOperation: ${expr.operator.value}\n${prettyPrintBoolean(expr.booleanExpression, level + 1)}`;
+  } else {
+    throw new Error("Unknown boolean expression type");
+  }
+}
+
+// Pretty printer function for Statements
+function prettyPrintStatement(statement: Statement, level: number = 0): string {
+  if (statement instanceof Assignment) {
+    return `${indent(level)}Assignment:\n${indent(level + 1)}Variable: ${statement.variable.toString()}\n${indent(level + 1)}Value:\n${prettyPrintArithmetic(statement.value, level + 2)}`;
+  } else if (statement instanceof Skip) {
+    return `${indent(level)}Skip`;
+  } else if (statement instanceof Concatenation) {
+    return `${indent(level)}Concatenation:\n${prettyPrintStatement(statement.firstStatement, level + 1)}\n${prettyPrintStatement(statement.secondStatement, level + 1)}`;
+  } else if (statement instanceof IfThenElse) {
+    return `${indent(level)}IfThenElse:\n${indent(level + 1)}Guard:\n${prettyPrintBoolean(statement.guard, level + 2)}\n${indent(level + 1)}Then:\n${prettyPrintStatement(statement.thenBranch, level + 2)}\n${indent(level + 1)}Else:\n${prettyPrintStatement(statement.elseBranch, level + 2)}`;
+  } else if (statement instanceof WhileLoop) {
+    return `${indent(level)}WhileLoop:\n${indent(level + 1)}Guard:\n${prettyPrintBoolean(statement.guard, level + 2)}\n${indent(level + 1)}Body:\n${prettyPrintStatement(statement.body, level + 2)}`;
+  } else if (statement instanceof RepeatUntilLoop) {
+    return `${indent(level)}RepeatUntilLoop:\n${indent(level + 1)}Guard:\n${prettyPrintBoolean(statement.guard, level + 2)}\n${indent(level + 1)}Body:\n${prettyPrintStatement(statement.body, level + 2)}`;
+  } else if (statement instanceof ForLoop) {
+    return `${indent(level)}ForLoop:\n${indent(level + 1)}Initial:\n${prettyPrintStatement(statement.initialStatement, level + 2)}\n${indent(level + 1)}Guard:\n${prettyPrintBoolean(statement.guard, level + 2)}\n${indent(level + 1)}Increment:\n${prettyPrintStatement(statement.incrementStatement, level + 2)}\n${indent(level + 1)}Body:\n${prettyPrintStatement(statement.body, level + 2)}`;
+  } else if (statement instanceof IncrementOperator) {
+    return `${indent(level)}IncrementOperator:\n${indent(level + 1)}Variable: ${statement.variable.toString()}\n${indent(level + 1)}`;
+  } else if (statement instanceof DecrementOperator) {
+    return `${indent(level)}DecrementOperator:\n${indent(level + 1)}Variable: ${statement.variable.toString()}\n${indent(level + 1)}`;
+  } else {
+    throw new Error("Unknown statement type");
+  }
+}
+
+export default prettyPrintStatement;
