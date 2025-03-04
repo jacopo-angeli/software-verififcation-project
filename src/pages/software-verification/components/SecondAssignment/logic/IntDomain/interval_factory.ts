@@ -9,7 +9,7 @@ export class IntervalFactory {
     ) { }
 
     public getInterval(l: number, u: number): Interval {
-        if(l>u) throw Error(`Interval creation: invalid bounds [${l}, ${u}]`);
+        if (l > u) throw Error(`Interval creation: invalid bounds [${l}, ${u}]`);
         return new Interval(Math.max(...[this.min, l]), Math.max(...[this.min, Math.min(...[this.max, u])]));
     }
 
@@ -35,13 +35,14 @@ export class IntervalFactory {
     public intersect(i1: Interval, i2: Interval): Interval {
         const lower = Math.max(i1.lower, i2.lower);
         const upper = Math.min(i1.upper, i2.upper);
-        if (lower <= upper) {
-            return new Interval(lower, upper);
-        } else {
-            return this.Bottom;
-        }
-    }
+        return new Interval(lower, upper);
 
+    }
+    public union(i1: Interval, i2: Interval): Interval {
+        const lower = Math.min(i1.lower, i2.lower);
+        const upper = Math.max(i1.upper, i2.upper);
+        return new Interval(lower, upper);
+    }
     public get getMax(): number { return this.max; }
     public get getMin(): number { return this.min; }
 }
@@ -63,7 +64,7 @@ export class Interval {
     }
 
     public toString() {
-        if(isNaN(this._lower) && isNaN(this._upper)) return '⊥';
+        if (isNaN(this._lower) && isNaN(this._upper)) return '⊥';
         return `[${this._lower === Number.MIN_SAFE_INTEGER ? "-∞" : this._lower}, ${this._upper === Number.MAX_SAFE_INTEGER ? "+∞" : this._upper}]`;
     }
 }

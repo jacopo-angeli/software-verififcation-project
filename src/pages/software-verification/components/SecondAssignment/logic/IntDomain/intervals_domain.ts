@@ -255,12 +255,10 @@ export class IntervalDomain extends AbstractDomain<Interval> {
 
     // ArithmeticOp -----------------------------------------------------------------------------------------
     protected op(i1: Interval, op: string, i2: Interval): Interval {
+        if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2))
+            return this.intervalFactory.Bottom;
         switch (op) {
             case "+":
-                if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2))
-                    return this.intervalFactory.Bottom;
-                if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2))
-                    return this.intervalFactory.Top;
                 return this.intervalFactory.getInterval(
                     i1.lower + i2.lower,
                     i1.upper + i2.upper
@@ -268,27 +266,13 @@ export class IntervalDomain extends AbstractDomain<Interval> {
 
 
             case "-":
-                if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2))
-                    return this.intervalFactory.Bottom;
-                if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2))
-                    return this.intervalFactory.Top;
                 return this.intervalFactory.getInterval(
-                    Math.min(i1.lower - i2.lower, i1.lower - i2.upper, i1.upper - i2.lower, i1.upper - i2.upper),
-                    Math.max(i1.lower - i2.lower, i1.lower - i2.upper, i1.upper - i2.lower, i1.upper - i2.upper),
+                    i1.lower + i2.upper,
+                    i1.upper + i2.lower
                 );
 
 
             case "*":
-                if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2))
-                    return this.intervalFactory.Bottom;
-                if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2)) {
-                    if (i1 instanceof Interval && i1.lower === i1.upper && i1.lower === 0)
-                        return this.intervalFactory.getInterval(0, 0);
-                    if (i2 instanceof Interval && i2.lower === i2.upper && i2.lower === 0)
-                        return this.intervalFactory.getInterval(0, 0);
-                    return this.intervalFactory.Top;
-                }
-
                 let products: Array<number> = [
                     i1.lower * i2.lower, i1.lower * i2.upper,
                     i1.upper * i2.lower, i1.upper * i2.upper
@@ -296,44 +280,24 @@ export class IntervalDomain extends AbstractDomain<Interval> {
                 return this.intervalFactory.getInterval(Math.min(...products), Math.max(...products));
 
 
-            case "%":
-                if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2)) return this.intervalFactory.Bottom;
-                if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2)) return this.intervalFactory.Top;
-
-                if (i2.lower === 0 && i2.upper === 0) return this.intervalFactory.Bottom;
-
-                if (i2.lower > 0 || i2.upper < 0) {
-                    return this.intervalFactory.getInterval(
-                        Math.min(i1.lower % i2.lower, i1.lower % i2.upper, i1.upper % i2.lower, i1.upper % i2.upper),
-                        Math.max(i1.lower % i2.lower, i1.lower % i2.upper, i1.upper % i2.lower, i1.upper % i2.upper)
-                    );
-                }
-
-                return this.intervalFactory.Bottom;
-
             case "/":
-                // ? Maybe give a warning
-                if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2) || (i2.lower === 0 && i2.upper === 0)) {
-                    return this.intervalFactory.Bottom;
-                }
-                if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2)) {
-                    return this.intervalFactory.Top;
-                }
-
-                // Handle division by intervals safely, considering zero boundaries
-                if (i2.lower <= 0 && i2.upper >= 0) {
-                    // Interval i2 includes zero; division is undefined
-                    return this.intervalFactory.Top;
-                }
-
-                let quotients: Array<number> = [
-                    i1.lower / i2.lower, i1.lower / i2.upper,
-                    i1.upper / i2.lower, i1.upper / i2.upper
-                ];
-                return this.intervalFactory.getInterval(Math.min(...quotients), Math.max(...quotients));
-
+                if (1 <= i2.lower)
+                    return this.intervalFactory.getInterval(
+                        Math.min(i1.lower / i2.lower, i1.lower / i2.upper),
+                        Math.max(i1.upper / i2.lower, i1.upper % i2.upper)
+                    );
+                if (i2.upper <= -1)
+                    return this.intervalFactory.getInterval(
+                        Math.min(i1.upper / i2.lower, i1.upper / i2.upper),
+                        Math.max(i1.lower / i2.lower, i1.lower % i2.upper)
+                    );
+                return this.intervalFactory.union(
+                    this.op(i1, "/", this.intervalFactory.intersect(i2, this.intervalFactory.getMoreThan(0))),
+                    this.op(i1, "/", this.intervalFactory.intersect(i2, this.intervalFactory.getLessThan(0)))
+                )
+                
             default:
-                throw Error();
+                throw Error("Op: undefined operator: " + op);
         }
     };
     // ------------------------------------------------------------------------------------------------------
@@ -396,7 +360,7 @@ export class IntervalDomain extends AbstractDomain<Interval> {
                         // x < n : x <= n-1
                         if (negation)
                             return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
-                        console.log(aState.get(expr.leftOperand.name).upper.toString(),expr.rightOperand.value);
+                        console.log(aState.get(expr.leftOperand.name).upper.toString(), expr.rightOperand.value);
                         if (aState.get(expr.leftOperand.name).lower < expr.rightOperand.value) {
                             return aState.copyWith(
                                 expr.leftOperand.name,
