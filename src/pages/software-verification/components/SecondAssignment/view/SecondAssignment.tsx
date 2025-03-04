@@ -54,7 +54,7 @@ const SecondAssignment = () => {
 			let abstractState = Parser.parseAbstractState(Lexer.tokenize(formFields.abstractState), new IntervalFactory(formFields.lowerBound, formFields.upperBound));
 			setResults((prevState) => ({
 				...prevState,
-				abstractProgramState: abstractState.toString(),
+				abstractProgramState: abstractState.copy().toString(),
 			}));
 
 			// Program
@@ -63,10 +63,12 @@ const SecondAssignment = () => {
 				...prevState,
 				tokenList: tokenList.map((e) => e.toString()).join(" "),
 			}));
+
 			let program = Parser.parse(tokenList);
+			let ast = prettyPrintStatement(program);
 			setResults((prevState) => ({
 				...prevState,
-				ast: prettyPrintStatement(program),
+				ast: ast,
 				annotatedProgram: program.toAnnotatedProgram(),
 				denotationalSemantic: program.toString(),
 			}));
@@ -78,7 +80,6 @@ const SecondAssignment = () => {
 				dSharpResult: dSharpResult.toString(),
 			}));
 		} catch (e) {
-			_clearResult();
 			console.log(e);
 			if (e instanceof InitialStateFormatError) {
 				setErrors((prevState) => ({ ...prevState, asbtractStateFormatError: (e as InitialStateFormatError).message }));
@@ -225,56 +226,26 @@ r = q - p`,
 			<h2>Second assignment</h2>
 			<p>
 				<Latex>
-					{
-						"Implement an abstract interpreter for the abstract denotational semantics $D^\\#$ of While (cf. Chapter 4 of the lecture notes), where the language includes arithmetic expressions that may give rise to run-time errors, such as integer divisions <em>a1 % a2</em>, and may modify the current state, such as variable increments <em>x++</em> and decrements <em>x--</em>."
-					}
+					{`Implement an abstract interpreter for the abstract denotational semantics $D^\\#$ of While (cf. Chapter 4 of the lecture notes), where the language includes arithmetic expressions that may give rise to run-time errors, such as integer divisions <em>a1 % a2</em>, and may modify the current state, such as variable increments <em>x++</em> and decrements <em>x--</em>.<br>
+					More in detail, this means to write a program $\\textit{AI}$, in a suitable programming language of free choice, such that: <br>
+					<ul>
+						<li>
+							The abstract interpreter $\\textit{AI}$ can be instantianted to a numerical abstract domain $A$ which abstracts $℘(\\Z)$ and to a state abstract domain $S$ which abstracts $℘(State)$ and is automatically derived from $A$ as a non-relational variable-wise abstract domain, so that the instantiation to $A$ is denoted by $AI_A$. One can assume that the abstract domain $A$ is a complete lattice so that $A$ is defined together with its partial order relation, bottom and top elements, lub, glb, widening and narrowing operators if needed.
+						</li>
+						<li>
+							$AI_A$ takes as input any program $P \\in While$ and abstract state $s^\\# \\in S$ (for the variables occurring in $P$ ). $AI_A(P, s^\\#)$ provides as output $D^\\#[\\![P]\\!]s^\\#$. As an optional task, $AI_A(P, s^\\#)$ may also provide as output the abstract loop invariants for any loop occurring in $P$ , which are computed by $AI_A(P, s^\\#)$ in order to compute its output $D^\\#[\\![P]\\!]s^\\#$ (therefore this goal could be achieved by suitably storing the needed information for computing $AI_A(P, s^\\#)$).
+						</li>
+						<li>
+							Instantiate $AI$ to the following parametric restriction of the interval abstract domain $Int$: <br><br><br>
+							$Given \\space m, n \\in Z \\cup \\{-\\infty, +\\infty\\},\\space define$ <br><br>
+							$Int_{m,n} \\overset{def}{=} \\{\\empty, \\Z \\} \\cup \\{[k, k] \\space | \\space k \\in \\Z \\} \\cup \\{[a, b] \\space | \\space a < b, [a, b] \\subseteq [m, n]\\} \\cup \\{(-\\infty, k] \\space | \\space k \\in [m, n]\\} \\cup \\{[k, -\\infty) \\space | \\space k \\in [m, n]\\} $ <br><br><br>
+							Thus, we have that $Int_{-\\infty,+\\infty}$ = $Int$ and if $m > n$ then $Int_{m,n}$ is the constant propagation domain. It is required to implement the <strong>interval widening with thresholds</strong>, where the set of thresholds can be inferred from the constants that syntactically occur in the program under analysis. If $m, n \\in \\Z$ then $Int_{m,n}$ has no infinite ascending chains, thus an analysis with $Int_{m,n}$, at least in principle, would not need a widening. In order to run an analysis with $Int_{m,n}$, first the user must instantiate the parameters $m$ and $n$. 
+							One could also automatically infer the parameters $m$ and $n$ from a simple syntactic analysis of the input program, e.g. based on some suitable heuristics.
+						</li>
+					</ul>
+					`}
 				</Latex>
 			</p>
-			<p>
-				<Latex>{"More in detail, this means to write a program $\\textit{AI}$, in a suitable programming language of free choice, such that:"}</Latex>
-			</p>
-			<ul>
-				<li>
-					<p>
-						<Latex>
-							{
-								"The abstract interpreter $\\textit{AI}$ can be instantianted to a numerical abstract domain $A$ which abstracts $℘(\\Z)$ and to a state abstract domain $S$ which abstracts $℘(State)$ and is automatically derived from $A$ as a non-relational variable-wise abstract domain, so that the instantiation to $A$ is denoted by $AI_A$. One can assume that the abstract domain $A$ is a complete lattice so that $A$ is defined together with its partial order relation, bottom and top elements, lub, glb, widening and narrowing operators if needed."
-							}
-						</Latex>
-					</p>
-				</li>
-				<li>
-					<p>
-						<Latex>
-							{
-								"$AI_A$ takes as input any program $P \\in While$ and abstract state $s^\\# \\in S$ (for the variables occurring in $P$ ). $AI_A(P, s^\\#)$ provides as output $D^\\#[\\![P]\\!]s^\\#$. As an optional task, $AI_A(P, s^\\#)$ may also provide as output the abstract loop invariants for any loop occurring in $P$ , which are computed by $AI_A(P, s^\\#)$ in order to compute its output $D^\\#[\\![P]\\!]s^\\#$ (therefore this goal could be achieved by suitably storing the needed information for computing $AI_A(P, s^\\#)$)."
-							}
-						</Latex>
-					</p>
-				</li>
-				<li>
-					<p>
-						<Latex>{"Instantiate $AI$ to the following parametric restriction of the interval abstract domain $Int$:"}</Latex>
-					</p>
-					<p>
-						<Latex>{"$Given \\space m, n \\in Z \\cup \\{-\\infty, +\\infty\\},\\space define$"}</Latex>
-					</p>
-					<p>
-						<Latex>
-							{
-								"$Int_{m,n} \\overset{def}{=} \\{\\empty, \\Z \\} \\cup \\{[k, k] \\space | \\space k \\in \\Z \\} \\cup \\{[a, b] \\space | \\space a < b, [a, b] \\subseteq [m, n]\\} \\cup \\{(-\\infty, k] \\space | \\space k \\in [m, n]\\} \\cup \\{[k, -\\infty) \\space | \\space k \\in [m, n]\\} $"
-							}
-						</Latex>
-					</p>
-					<p>
-						<Latex>
-							{
-								"Thus, we have that $Int_{-\\infty,+\\infty}$ = $Int$ and if $m > n$ then $Int_{m,n}$ is the constant propagation domain. If $m, n \\in \\Z$ then $Int_{m,n}$ has no infinite ascending chains, thus an analysis with $Int_{m,n}$, at least in principle, would not need a widening. In order to run an analysis with $Int_{m,n}$, first the user must instantiate the parameters $m$ and $n$. One could also automatically infer the parameters $m$ and $n$ from a simple syntactic analysis of the input program, e.g. based on some suitable heuristics."
-							}
-						</Latex>
-					</p>
-				</li>
-			</ul>
 			<div className="submission">
 				<h3>Submission</h3>
 				<h4>Instructions and notes</h4>
@@ -285,58 +256,36 @@ r = q - p`,
 					<div className="initial-state-syntax">
 						<h5>Abstract state grammar</h5>
 						<p>
-							<Latex>{"$n \\in \\Z \\cup \\{-\\inf\\} \\cup \\{+\\inf\\}$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$var \\in [a-z]+$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$Int \\Coloneqq [n,n] \\space | \\space top \\space | \\space bottom $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$S(var) \\Coloneqq \\space var : Int \\space | \\space S(var) ; S(var') $"}</Latex>
+							<Latex>
+								{`$\\begin{array}{rcl} 
+								    n & \\in & \\Z \\cup \\{-\\inf\\} \\cup \\{+\\inf\\}\\\\
+									var & \\in & [a-z]+ \\\\
+									Int  & \\Coloneqq & [n,n] \\space | \\space top \\space | \\space bottom  \\\\
+									S(var) & \\Coloneqq & \\space var : Int \\space | \\space S(var) ; S(var') \\\\
+								  \\end{array}$`}
+							</Latex>
 						</p>
 					</div>
 					<div className="while-plus-syntax">
 						<h5>While grammar</h5>
 						<p>
-							<Latex>{"$n \\in \\N$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$x \\in [a-z]+$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\triangle \\Coloneqq \\quad != \\space | \\space == \\space | \\space < \\space | \\space <= \\space | \\space > \\space | \\space >=$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\square \\Coloneqq \\space \\&\\& \\space | \\space ||$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\Diamond \\Coloneqq \\space + \\space | \\space - \\space | \\space * \\space | \\space \\% \\space$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$A \\Coloneqq \\space n \\space | \\space x \\space | \\space (A) \\space | \\space  -(A) \\space | \\space A_1 \\space \\Diamond \\space A_2  $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$B \\Coloneqq \\space true \\space | \\space false \\space | \\space (B) \\space | \\space !(B) \\space | \\space A_1 \\space \\triangle \\space A_2 \\space | \\space B_1 \\space \\square \\space B_2$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$S \\Coloneqq \\space x=A \\space | \\space skip \\space | \\space x++ \\space | \\space x-- $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$while \\Coloneqq \\space S \\space | \\space  while_1;while_2 $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{if} \\space (B)\\space \\textbf{then} \\space \\{\\space while_1 \\space\\}\\space \\textbf{else} \\space \\{\\space while_2\\space \\} $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{while} \\space (B)\\space \\{\\space while \\space\\}$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{repeat} \\space\\{\\space while \\space\\} \\space \\textbf{until} \\space (B)$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{for} \\space (S_1;B;S_2) \\space \\{\\space while \\space\\}$"}</Latex>
+							<Latex>
+								{`$\\begin{array}{rcl} 
+									n & \\in & \\N \\\\ 
+									x & \\in & [a-z]+ \\\\\\\\
+									\\triangle & \\Coloneqq & != \\space | \\space == \\space | \\space < \\space | \\space <= \\space | \\space > \\space | \\space >= \\\\
+									\\square & \\Coloneqq & \\space \\&\\& \\space | \\space || \\\\
+									\\Diamond & \\Coloneqq & \\space + \\space | \\space - \\space | \\space * \\space | \\space \\ / \\space \\\\\\\\
+									A & \\Coloneqq & \\space n \\space | \\space x \\space | \\space (A) \\space | \\space  -(A) \\space | \\space A_1 \\space \\Diamond \\space A_2 | \\space x++ \\space | \\space x--  \\\\
+									B & \\Coloneqq & \\space true \\space | \\space false \\space | \\space (B) \\space | \\space !(B) \\space | \\space A_1 \\space \\triangle \\space A_2 \\space | \\space B_1 \\space \\square \\space B_2 \\\\
+									S & \\Coloneqq & \\space x=A \\space | \\space skip \\\\
+									while & \\Coloneqq & \\space S \\space | \\space  while_1;while_2 \\\\
+									& | &\\space \\textbf{if} \\space (B)\\space \\textbf{then} \\space \\{\\space while_1 \\space\\}\\space \\textbf{else} \\space \\{\\space while_2\\space \\} \\\\
+									& | &\\space \\textbf{while} \\space (B)\\space \\{\\space while \\space\\}\\\\
+									& | &\\space \\textbf{repeat} \\space\\{\\space while \\space\\} \\space \\textbf{until} \\space (B)\\\\
+									& | &\\space \\textbf{for} \\space (S_1;B;S_2) \\space \\{\\space while \\space\\}
+								  \\end{array}$`}
+							</Latex>
 						</p>
 					</div>
 				</div>

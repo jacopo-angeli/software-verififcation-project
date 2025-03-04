@@ -16,7 +16,7 @@ import prettyPrintStatement from "../../../logic/pretty_printer";
 const FirstAssignment = () => {
 	var [initialState, setInitialState] = useState("");
 	var [program, setProgram] = useState("");
-	var [iterationLimit, setIterationLimit] = useState(9999);
+	var [iterationLimit, setIterationLimit] = useState(300000);
 
 	const [initialStateFormatError, setInitialStateFormatError] = useState("");
 	const [programFormatError, setProgramFormatError] = useState("");
@@ -34,7 +34,7 @@ const FirstAssignment = () => {
 
 		try {
 			let initialStateResult = Parser.parseInitialState(Lexer.tokenize(initialState));
-			setInitialStateResult(initialStateResult);
+			setInitialStateResult(initialStateResult.copy());
 			let tokenListResult = Lexer.tokenize(program);
 			setTokenList(tokenListResult);
 			let ast = Parser.parse(tokenListResult);
@@ -42,16 +42,16 @@ const FirstAssignment = () => {
 			let eR = Sds.eval(ast, initialStateResult, isNaN(iterationLimit) ? Number.POSITIVE_INFINITY : iterationLimit);
 			setEvaluationResult(eR);
 		} catch (error) {
+			console.log(error);
 			if (error instanceof InitialStateFormatError) setInitialStateFormatError(error.message);
 			else {
-				setInitialStateFormatError(`${(error as Error).message} ¯\\(°_o)/¯`);
-				setProgramFormatError(`${(error as Error).message} ¯\\(°_o)/¯`);
+				setInitialStateFormatError(`${(error as Error).message} `);
+				setProgramFormatError(`${(error as Error).message}`);
 			}
 		}
 	};
 	const _smokeExample = new Map<string, () => void>()
 		.set("Arithmetic", () => {
-			// TODO : change
 			setInitialState("p=0; q=0; r=0;");
 			setProgram(`p = 3;
 q = p * 4 + 2;
@@ -98,7 +98,7 @@ r = q - p`);
 			setProgram(`if(number<=1) then {
   result = 0	
 } else {
-  for (x = 2; x < number && result == 1; x++){
+  for (x = 2; x < number && result == 1; x=x++){
     if (number % x == 0) then {
       result = 0
     } else {
@@ -120,7 +120,7 @@ r = q - p`);
   result = n
 } else {
   if(result != n) then{
-   for(i = 2; i <= n; i++){
+   for(i = 2; i <= n; i=i++){
     fibNext = fibPrev + fibCurrent;
     fibPrev = fibCurrent;
     fibCurrent = fibNext
@@ -146,29 +146,23 @@ r = q - p`);
 	return (
 		<div id="first-assignment">
 			<h2>First Assignment</h2>
-			<p>Design and implement an interpreter for the denotational semantics of While+. This means to write a program I, in the programming language you prefer and deem more suitable, such that:</p>
-			<ul>
-				<li>
-					I takes as input any <Latex>$ S \in While+$</Latex> and some representation of <Latex>$s \in State$</Latex>.
-				</li>
-				<li>
-					<Latex>{"$While+$ is $While$, plus some syntactic sugar for Arithmetic/Boolean expressions and statements. Including for and repeat-until loops."}</Latex>
-				</li>
-				<li>
-					<Latex>
-						{
-							"It must always happen that $I(S, s) = S_{ds}[\\![S]\\!]s$. Thus, $S_{ds}[\\![S]\\!]s = undef$ if and only if the execution $I(S, s)$ does not terminate; note that this does not mean that the execution $I(S, s)$ gives rise to a run-time error or exception, but $I(S, s)$ should keep running forever."
-						}
-					</Latex>
-				</li>
-				<li>
-					<Latex>
-						{
-							"$I$ relies on Kleene-Knaster-Tarski fixpoint iteration sequence for evaluating the while statements. This means that if $F : (State \\hookrightarrow State) \\rightarrow (State \\hookrightarrow State)$ is the functional induced by a loop program $while \\space b \\space do \\space S$, then $I(while \\space b \\space do \\space S, s)$ must be implemented as $(\\sqcup_{n≥0} F^n(\\perp))s$. This means that $I(while \\space b \\space do \\space S, s)$ has to look for the least $k ≥ 0$ such that $F^k(\\perp)s = s'$ for some $s'$ so that the call $I(while \\space b \\space do \\space S, s)$ outputs $s'$, whereas if for all $n \\ge 0$, $F^n(\\perp)s = undef$ then the call $I(while \\space b \\space do \\space S, s)$ does not terminate with no run-time error/exception."
-						}
-					</Latex>
-				</li>
-			</ul>
+			<p>
+				<Latex>
+					{`Design and implement an interpreter for the denotational semantics of While+. This means to write a program I, in the programming language you prefer and deem more suitable, such that:<br>
+						<ul>
+							<li>
+							I takes as input any $ S \\in While+$ and some representation of $s \\in State$ 
+							</li>
+							<li>
+							$While+$ is $While$, plus some syntactic sugar for Arithmetic/Boolean expressions and statements. Including for and repeat-until loops.
+							</li>
+							<li>
+							$I$ relies on Kleene-Knaster-Tarski fixpoint iteration sequence for evaluating the while statements. This means that if $F : (State \\hookrightarrow State) \\rightarrow (State \\hookrightarrow State)$ is the functional induced by a loop program $while \\space b \\space do \\space S$, then $I(while \\space b \\space do \\space S, s)$ must be implemented as $(\\sqcup_{n≥0} F^n(\\perp))s$. 
+							This means that $I(while \\space b \\space do \\space S, s)$ has to look for the least $k ≥ 0$ such that $F^k(\\perp)s = s'$ for some $s'$ so that the call $I(while \\space b \\space do \\space S, s)$ outputs $s'$, whereas if for all $n \\ge 0$, $F^n(\\perp)s = undef$ then the call $I(while \\space b \\space do \\space S, s)$ does not terminate with no run-time error/exception.
+							</li>
+						</ul>`}
+				</Latex>
+			</p>
 			<div className="submission">
 				<h3>Submission</h3>
 				<h4>Instructions and notes</h4>
@@ -182,52 +176,34 @@ r = q - p`);
 					<div className="initial-state-syntax">
 						<h5>Initial state grammar</h5>
 						<p>
-							<Latex>{"$ x \\in [a-z]+$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$ S(var) \\Coloneqq var=n; | S(var) S(var')$"}</Latex>
+							<Latex>
+								{`$\\begin{array}{rcl}
+									x & \\in & [a-z]+ \\\\
+									S(var) & \\Coloneqq & var=n; | S(var) S(var') \\\\
+									\\end{array}$`}
+							</Latex>
 						</p>
 					</div>
 					<div className="while-plus-syntax">
 						<h5>While grammar</h5>
 						<p>
-							<Latex>{"$n \\in \\N$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$x \\in [a-z]+$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\triangle \\Coloneqq \\quad != \\space | \\space == \\space | \\space < \\space | \\space <= \\space | \\space > \\space | \\space >=$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\square \\Coloneqq \\space \\&\\& \\space | \\space ||$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\Diamond \\Coloneqq \\space + \\space | \\space - \\space | \\space * \\space | \\space \\% \\space$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$A \\Coloneqq \\space n \\space | \\space x \\space | \\space (A) \\space | \\space  -(A) \\space | \\space A_1 \\space \\Diamond \\space A_2  $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$B \\Coloneqq \\space true \\space | \\space false \\space | \\space (B) \\space | \\space !(B) \\space | \\space A_1 \\space \\triangle \\space A_2 \\space | \\space B_1 \\space \\square \\space B_2$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$S \\Coloneqq \\space x=A \\space | \\space skip \\space | \\space x++ \\space | \\space x-- $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$while \\Coloneqq \\space S \\space | \\space  while_1;while_2 $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{if} \\space (B)\\space \\textbf{then} \\space \\{\\space while_1 \\space\\}\\space \\textbf{else} \\space \\{\\space while_2\\space \\} $"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{while} \\space (B)\\space \\{\\space while \\space\\}$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{repeat} \\space\\{\\space while \\space\\} \\space \\textbf{until} \\space (B)$"}</Latex>
-						</p>
-						<p>
-							<Latex>{"$\\quad\\quad\\quad\\quad\\quad |\\space \\textbf{for} \\space (S_1;B;S_2) \\space \\{\\space while \\space\\}$"}</Latex>
+							<Latex>
+								{`$\\begin{array}{rcl} 
+									n & \\in & \\N \\\\ 
+									x & \\in & [a-z]+ \\\\\\\\
+									\\triangle & \\Coloneqq & != \\space | \\space == \\space | \\space < \\space | \\space <= \\space | \\space > \\space | \\space >= \\\\
+									\\square & \\Coloneqq & \\space \\&\\& \\space | \\space || \\\\
+									\\Diamond & \\Coloneqq & \\space + \\space | \\space - \\space | \\space * \\space | \\space \\ / \\space \\\\\\\\
+									A & \\Coloneqq & \\space n \\space | \\space x \\space | \\space (A) \\space | \\space  -(A) \\space | \\space A_1 \\space \\Diamond \\space A_2 | \\space x++ \\space | \\space x--  \\\\
+									B & \\Coloneqq & \\space true \\space | \\space false \\space | \\space (B) \\space | \\space !(B) \\space | \\space A_1 \\space \\triangle \\space A_2 \\space | \\space B_1 \\space \\square \\space B_2 \\\\
+									S & \\Coloneqq & \\space x=A \\space | \\space skip \\\\
+									while & \\Coloneqq & \\space S \\space | \\space  while_1;while_2 \\\\
+									& | &\\space \\textbf{if} \\space (B)\\space \\textbf{then} \\space \\{\\space while_1 \\space\\}\\space \\textbf{else} \\space \\{\\space while_2\\space \\} \\\\
+									& | &\\space \\textbf{while} \\space (B)\\space \\{\\space while \\space\\}\\\\
+									& | &\\space \\textbf{repeat} \\space\\{\\space while \\space\\} \\space \\textbf{until} \\space (B)\\\\
+									& | &\\space \\textbf{for} \\space (S_1;B;S_2) \\space \\{\\space while \\space\\}
+									\\end{array}$`}
+							</Latex>
 						</p>
 					</div>
 				</div>

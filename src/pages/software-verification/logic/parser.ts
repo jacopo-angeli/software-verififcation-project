@@ -1,7 +1,7 @@
 import { Token, TokenType } from "../model/token";
-import { Assignment, Concatenation, DecrementOperator, ForLoop, IfThenElse, IncrementOperator, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
+import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
 import { Boolean, BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator } from "../model/while+/boolean_expression";
-import { Variable, ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral } from "../model/while+/arithmetic_expression";
+import { Variable, ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral, IncrementOperator, DecrementOperator} from "../model/while+/arithmetic_expression";
 import { ProgramState } from "../components/FirstAssignment/model/program_state";
 import { InitialStateFormatError, ProgramFormatError } from "../model/errors";
 import { AbstractProgramState } from "../components/SecondAssignment/model/abstract_program_state";
@@ -375,7 +375,7 @@ export class Parser {
         this.parseAssignment(tokens);
         this.parseStatement(tokens);
         if (tokens[0] instanceof Statement) return tokens[0];
-        throw new ProgramFormatError("Error while parsing the program.");
+        throw new ProgramFormatError("Parser: Not a statement.");
     }
 
     static parseInitialState(input: Array<Token>): ProgramState {

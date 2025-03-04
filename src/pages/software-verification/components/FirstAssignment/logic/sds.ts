@@ -1,5 +1,5 @@
 
-import { Assignment, Concatenation, DecrementOperator, ForLoop, IfThenElse, IncrementOperator, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../model/while+/statement";
+import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../model/while+/statement";
 import { ProgramState } from "../model/program_state";
 import A from "./a";
 import B from "./b";
@@ -7,8 +7,8 @@ class Sds {
     static eval(stmt: Statement, state: ProgramState, iterationLimit: number): ProgramState {
 
         if (stmt instanceof Assignment) {
-            let aux: ProgramState = state.copy();
-            aux.set(stmt.variable.name, A.eval(stmt.value, state));
+            let aux: ProgramState = A.eval(stmt.value, state).state;
+            aux.set(stmt.variable.name, A.eval(stmt.value, state).value);
             return aux;
         }
 
@@ -21,70 +21,59 @@ class Sds {
         }
 
         if (stmt instanceof IfThenElse) {
-            if (B.eval(stmt.guard, state))
+            if (B.eval(stmt.guard, state).value)
                 return Sds.eval(stmt.thenBranch, state.copy(), iterationLimit);
             else
                 return Sds.eval(stmt.elseBranch, state.copy(), iterationLimit);
         }
 
         if (stmt instanceof WhileLoop) {
-            // <while (guard) {body}, state>
-            //      < if guard then (body; while (guard) {body}) else skip, s> 
-            console.log(`while: ${state.toString()}`);
-            if (B.eval(stmt.guard, state) && iterationLimit > 0) {
-                let result: ProgramState = Sds.eval(stmt.body, state.copy(), iterationLimit);
-                return Sds.eval(stmt, result, iterationLimit - 1);
-            }
-            else return state.copy();
+            // FIX F where F g = cond(Bds[guard], g o Sds[body], id) 
+            //                                            ^
+            // Non eseguo uno while intero altrimenti starei comunque utilizzando la ricorsione
+            // Ogni interazione eseguo Sds su un condizionale che esegue il corpo del ciclo nel
+            // nel caso di guardia a true. Eseguendo lo stesso comportamento della regola orig-
+            // inale
+            let current = state.copy();
+            let prev: ProgramState;
+            do {
+                console.log(`while: ${current.toString()}`);
+                prev = current.copy();
+                current = Sds.eval(new IfThenElse(stmt.guard, stmt.body, new Skip()), prev.copy(), iterationLimit - 1);
+                iterationLimit--;
+            } while (!prev.equalsTo(current) && iterationLimit > 0)
+            return current;
         }
 
         if (stmt instanceof RepeatUntilLoop) {
-            // < repeat {body} until (guard), state > =>
-            //      <body; if b then skip else (repeat {body} until (guard)), state>
-            console.log(`repeat-until: ${state.toString()}`);
-            let result: ProgramState = Sds.eval(stmt.body, state.copy(), iterationLimit);
-            if (B.eval(stmt.guard, result) && iterationLimit > 0) return result;
-            else return Sds.eval(stmt, result, iterationLimit - 1);
+            // FIX F o Sds[body]
+            // where F g = cond(Bds[guard], id, g o Sds[body])
+            let current = Sds.eval(stmt.body, state.copy(), iterationLimit);
+            let prev: ProgramState;
+            do {
+                console.log(`repeat-until: ${current.toString()}`);
+                prev = current.copy();
+                current = Sds.eval(new IfThenElse(stmt.guard, new Skip(), stmt.body), prev.copy(), iterationLimit - 1);
+                iterationLimit--;
+            } while (!prev.equalsTo(current) && iterationLimit > 0)
+            return current;
         }
 
         if (stmt instanceof ForLoop) {
-            //  < for (initialStatement, guard, incrementStatement) { body }, state> =>
-            //      <initialStatement; if b then (body; incrementStatement; for (skip, body, incrementStatement)) else skip, state> 
-            console.log(`For-Loop: ${state.toString()}`);
-            let result: ProgramState = Sds.eval(stmt.initialStatement, state.copy(), iterationLimit);
-            if (B.eval(stmt.guard, result) && iterationLimit > 0) {
-                result = Sds.eval(
-                    new Concatenation(
-                        new Concatenation(
-                            stmt.body,
-                            stmt.incrementStatement
-                        ),
-                        new ForLoop(
-                            stmt.body,
-                            stmt.guard,
-                            new Skip(),
-                            stmt.incrementStatement
-                        ),
-                    ),
-                    result.copy(),
-                    iterationLimit - 1,
-                );
-            }
-            return result;
+            //  Sds[for(initial, guard, increment){ body }] = (FIX F) o Sds[increment]
+            //  where F g = cond(Bds[guard], g o Sds[increment] o Sds[body], id)
+            let current = Sds.eval(stmt.initialStatement, state.copy(), iterationLimit);
+            let prev: ProgramState;
+            do {
+                console.log(`for-loop: ${current.toString()}`);
+                prev = current.copy();
+                current = Sds.eval(new IfThenElse(stmt.guard, new Concatenation(stmt.body, stmt.incrementStatement), new Skip()), prev.copy(), iterationLimit);
+                iterationLimit--;
+            } while (!prev.equalsTo(current) && iterationLimit > 0)
+            return current;
         }
 
-        if (stmt instanceof IncrementOperator) {
-            let aux: ProgramState = state.copy();
-            aux.set(stmt.variable.name, state.get(stmt.variable.name) + 1);
-            return aux;
-        }
-        if (stmt instanceof DecrementOperator) {
-            let aux: ProgramState = state.copy();
-            aux.set(stmt.variable.name, state.get(stmt.variable.name) - 1);
-            return aux;
-        }
-
-        throw Error;
+        throw Error(`Unknown statement type: ${stmt.toString()}`);
 
     };
 }

@@ -1,8 +1,8 @@
 import { Interval, IntervalFactory } from "./interval_factory";
-import { ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral, Variable } from "../../../../model/while+/arithmetic_expression";
+import { ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral, Variable, IncrementOperator, DecrementOperator } from "../../../../model/while+/arithmetic_expression";
 import { BooleanExpression, Boolean, BooleanBinaryOperator, BooleanUnaryOperator, BooleanConcatenation } from "../../../../model/while+/boolean_expression";
 import { AbstractProgramState } from "../../model/abstract_program_state";
-import { Assignment, Concatenation, DecrementOperator, ForLoop, IfThenElse, IncrementOperator, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../../model/while+/statement";
+import { Assignment, Concatenation, ForLoop, IfThenElse, Loop, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../../model/while+/statement";
 import { Token, TokenType } from "../../../../model/token";
 import { AbstractDomain } from "../../model/abstract_domain";
 
@@ -172,15 +172,12 @@ export class IntervalDomain extends AbstractDomain<Interval> {
         if (this.intervalFactory.isBottom(i1)) return i2;
         if (this.intervalFactory.isBottom(i2)) return i1;
         if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2)) return this.intervalFactory.Top;
-        const newLower = (i1.lower <= i2.lower) ? i1.lower : this.intervalFactory.getMin;
-        const newUpper = (i1.upper >= i2.upper) ? i1.upper : this.intervalFactory.getMax;
-        // const newLower = (i1.lower <= i2.lower) ? i1.lower : (i2.lower >= 0 && i2.lower < i1.lower) ? 0 : this.intervalFactory.getMin;
-        // const newUpper = (i1.upper >= i2.upper) ? i1.upper : (i1.upper <= 0 && i1.upper > i2.upper) ? 0 : this.intervalFactory.getMax;
+        const newLower = (i1.lower <= i2.lower) ? i1.lower : Math.max(...(this.thresholds!.filter(x => x <= i2.lower)), this.intervalFactory.getMin);
+        const newUpper = (i1.upper >= i2.upper) ? i1.upper : Math.min(...(this.thresholds!.filter(x => x >= i2.upper)), this.intervalFactory.getMax);
         let ret = this.intervalFactory.getInterval(newLower, newUpper);
         return ret;
     }
     protected abstract_state_widening(a1: AbstractProgramState, a2: AbstractProgramState): AbstractProgramState {
-        console.log("Widening | inputs:", a1.toString(), a2.toString())
         let widenedState = new AbstractProgramState();
 
         // Process variables in the previous state (a1)
@@ -300,7 +297,6 @@ export class IntervalDomain extends AbstractDomain<Interval> {
 
 
             case "%":
-                console.log("Modulo, inputs: ", i1.toString(), i2.toString());
                 if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2)) return this.intervalFactory.Bottom;
                 if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2)) return this.intervalFactory.Top;
 
@@ -315,6 +311,26 @@ export class IntervalDomain extends AbstractDomain<Interval> {
 
                 return this.intervalFactory.Bottom;
 
+            case "/":
+                // ? Maybe give a warning
+                if (this.intervalFactory.isBottom(i1) || this.intervalFactory.isBottom(i2) || (i2.lower === 0 && i2.upper === 0)) {
+                    return this.intervalFactory.Bottom;
+                }
+                if (this.intervalFactory.isTop(i1) || this.intervalFactory.isTop(i2)) {
+                    return this.intervalFactory.Top;
+                }
+
+                // Handle division by intervals safely, considering zero boundaries
+                if (i2.lower <= 0 && i2.upper >= 0) {
+                    // Interval i2 includes zero; division is undefined
+                    return this.intervalFactory.Top;
+                }
+
+                let quotients: Array<number> = [
+                    i1.lower / i2.lower, i1.lower / i2.upper,
+                    i1.upper / i2.lower, i1.upper / i2.upper
+                ];
+                return this.intervalFactory.getInterval(Math.min(...quotients), Math.max(...quotients));
 
             default:
                 throw Error();
@@ -323,313 +339,421 @@ export class IntervalDomain extends AbstractDomain<Interval> {
     // ------------------------------------------------------------------------------------------------------
 
     // A#-B#-D# ---------------------------------------------------------------------------------------------
-    protected aSharp(expr: ArithmeticExpression, aState: AbstractProgramState): Interval {
+    protected aSharp(expr: ArithmeticExpression, aState: AbstractProgramState): { state: AbstractProgramState, value: Interval } {
         if (expr instanceof ArithmeticBinaryOperator) {
-            return this.op(this.aSharp(expr.leftOperand, aState), expr.operator.value, this.aSharp(expr.rightOperand, aState));
+            return {
+                state: this.aSharp(expr.rightOperand, this.aSharp(expr.leftOperand, aState).state).state.copy(),
+                value: this.op(this.aSharp(expr.leftOperand, aState).value, expr.operator.value, this.aSharp(expr.rightOperand, this.aSharp(expr.leftOperand, aState).state).value)
+            }
         }
         if (expr instanceof ArithmeticUnaryOperator) {
-            return this.op(this.aSharp(expr.operand, aState), "*", this.alpha(-1));
-        }
+            return {
+                state: this.aSharp(expr, aState).state.copy(),
+                value: this.intervalFactory.getInterval(-1 * this.aSharp(expr, aState).value.upper, -1 * this.aSharp(expr, aState).value.lower)
+            }
+        };
         if (expr instanceof Variable) {
-            return aState.get(expr.name);
+            return { state: aState.copy(), value: aState.get(expr.name) };
         }
         if (expr instanceof Numeral) {
-            return this.alpha(expr.value);
+            return { state: aState.copy(), value: this.alpha(expr.value) };
         }
-        throw Error("Unknown expression type.");
+        if (expr instanceof IncrementOperator) {
+            return {
+                state: aState.copyWith(expr.variable.name, this.op(aState.get(expr.variable.name), '+', this.alpha(1))),
+                value: this.op(aState.get(expr.variable.name), '+', this.alpha(1))
+            };
+        }
+        if (expr instanceof DecrementOperator) {
+            return {
+                state: aState.copyWith(expr.variable.name, this.op(aState.get(expr.variable.name), '-', this.alpha(1))),
+                value: this.op(aState.get(expr.variable.name), '-', this.alpha(1))
+            };
+        }
+        throw Error("ASharp : Not an expression.");
     }
     protected bSharp(expr: BooleanExpression, aState: AbstractProgramState, negation: boolean = false): AbstractProgramState {
         if (expr instanceof Boolean) {
-            if (expr.value === true || (expr.value === false && negation)) return aState.copy();
-            else return new AbstractProgramState();
+            return aState.copy();
         } else if (expr instanceof BooleanBinaryOperator) {
-
-            if (expr.leftOperand instanceof Variable) {
-                let auxAState: AbstractProgramState = new AbstractProgramState();
-
-                auxAState.set(expr.leftOperand.name, this.aSharp(expr.rightOperand, aState), true);
-
+            if (expr.leftOperand instanceof Variable && expr.rightOperand instanceof Numeral) {
                 switch (expr.operator.value) {
-                    //  if (negation)
-                    //  +----+----+----+----+----+----+----+
-                    //  |  f | <  | <= |  > | >= | != | == |
-                    //  +----+----+----+----+----+----+----+
-                    //  |    | >= |  > | <= |  < | == | != |
-                    //  +----+----+----+----+----+----+----+
-                    case "!=":
-                        // e.g. expr : x!=40, aState: {x:[0,30]} => {x:[0,30]}
-                        if (negation) return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.EQ, "==")), aState);
-                        return this.lub([aState, auxAState]);
-                    case "==":
-                        // e.g. expr : x==10, aState: {x:[0,30]} => {x:[10,10]}
-                        if (negation) return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.INEQ, "!=")), aState);
-                        return aState.copyWith(expr.leftOperand.name, this.aSharp(expr.rightOperand, aState));
-                    case "<":
-                        // e.g. expr : x<10, aState: {x:[0,30]} => {x: [min,9] ∩ [0,30] } 
-                        if (negation) return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState);
-                        return aState.copyWith(
-                            expr.leftOperand.name,
-                            this.intervalFactory.intersect(
-                                this.intervalFactory.getLessThan(this.aSharp(expr.rightOperand, aState).upper),
-                                aState.get(expr.leftOperand.name)
-                            ));
                     case "<=":
-                        // e.g. expr : x<=10, aState: {x:[0,30]} => {x: [min,10] ∩ [0,30] } 
-                        if (negation) return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MORE, ">")), aState);
-                        return aState.copyWith(
-                            expr.leftOperand.name,
-                            this.intervalFactory.intersect(
-                                this.intervalFactory.getLessThanOrEqual(this.aSharp(expr.rightOperand, aState).upper),
-                                aState.get(expr.leftOperand.name)
-                            ));;
-                    case ">":
-                        // e.g. expr : x>10, aState: {x:[0,30]} => {x: [10,max] ∩ [0,30] } 
-                        if (negation) return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESSEQ, "<=")), aState);
-                        return aState.copyWith(
-                            expr.leftOperand.name,
-                            this.intervalFactory.intersect(
-                                this.intervalFactory.getMoreThan(this.aSharp(expr.rightOperand, aState).upper),
-                                aState.get(expr.leftOperand.name)
-                            ));
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MORE, ">")), aState, !negation);
+                        if (aState.get(expr.leftOperand.name).lower <= expr.rightOperand.value) {
+                            return aState.copyWith(
+                                expr.leftOperand.name,
+                                this.intervalFactory.getInterval(
+                                    aState.get(expr.leftOperand.name).lower,
+                                    Math.min(aState.get(expr.leftOperand.name).upper, expr.rightOperand.value)
+                                )
+                            );
+                        } else {
+                            return aState.copyWith(expr.leftOperand.name, this.intervalFactory.Bottom);
+                        }
+                    case "<":
+                        // x < n : x <= n-1
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
+                        console.log(aState.get(expr.leftOperand.name).upper.toString(),expr.rightOperand.value);
+                        if (aState.get(expr.leftOperand.name).lower < expr.rightOperand.value) {
+                            return aState.copyWith(
+                                expr.leftOperand.name,
+                                this.intervalFactory.getInterval(
+                                    aState.get(expr.leftOperand.name).lower,
+                                    Math.max(aState.get(expr.leftOperand.name).upper, expr.rightOperand.value - 1)
+                                )
+                            );
+                        } else {
+                            return aState.copyWith(expr.leftOperand.name, this.intervalFactory.Bottom);
+                        }
                     case ">=":
-                        // e.g. expr : x>=10, aState: {x:[0,30]} => {x: [10,max] ∩ [0,30] } 
-                        if (negation) return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESS, "<")), aState);
-                        return aState.copyWith(
-                            expr.leftOperand.name,
-                            this.intervalFactory.intersect(
-                                this.intervalFactory.getMoreThanOrEqual(this.aSharp(expr.rightOperand, aState).upper),
-                                aState.get(expr.leftOperand.name)
-                            ));
+                        //  x >= n : n <= x 
+                        // if x.b >= n [max(x.a, n)]
+                        // else bottom
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESS, "<")), aState, !negation);
+                        if (aState.get(expr.leftOperand.name).upper >= expr.rightOperand.value) {
+                            return aState.copyWith(
+                                expr.leftOperand.name,
+                                this.intervalFactory.getInterval(
+                                    Math.max(aState.get(expr.leftOperand.name).lower, expr.rightOperand.value),
+                                    aState.get(expr.leftOperand.name).upper,
+                                )
+                            );
+                        } else {
+                            return aState.copyWith(expr.leftOperand.name, this.intervalFactory.Bottom);
+                        }
+                    case ">":
+                        // x > n : x >= n + 1
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESSEQ, "<=")), aState, !negation);
+                        return this.bSharp(
+                            new BooleanBinaryOperator(
+                                expr.leftOperand,
+                                new ArithmeticBinaryOperator(
+                                    expr.rightOperand,
+                                    new Numeral(1),
+                                    new Token(TokenType.MINUS, "+")
+                                ),
+                                new Token(TokenType.LESSEQ, ">=")
+                            ),
+                            aState.copy()
+                        )
+                    case "==":
+                        // x = n : s[x->n] if a<=n<=b, bot otherwise
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.INEQ, "!=")), aState, !negation);
+                        if (aState.get(expr.leftOperand.name).lower <= expr.rightOperand.value && expr.rightOperand.value <= aState.get(expr.leftOperand.name).upper) {
+                            return aState.copyWith(expr.leftOperand.name, this.alpha(expr.rightOperand.value));
+                        } else return AbstractProgramState.empty();
+                    case "!=":
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.EQ, "==")), aState, !negation);
+                        // x != n : (x < n) lub (x > n)
+                        return this.lub([
+                            this.bSharp(
+                                new BooleanBinaryOperator(
+                                    expr.leftOperand,
+                                    expr.rightOperand,
+                                    new Token(TokenType.LESS, "<")
+                                ),
+                                aState
+                            ),
+                            this.bSharp(
+                                new BooleanBinaryOperator(
+                                    expr.leftOperand,
+                                    expr.rightOperand,
+                                    new Token(TokenType.LESS, ">")
+                                ),
+                                aState
+                            )
+                        ]);
                     default:
-                        throw Error("bSharp: Unknown boolean binary operator.");
+                        throw Error(`bSharp: Unkwnown boolean binary operator: ${expr.operator.value}.`);
                 }
+            } else if (expr.leftOperand instanceof Variable && expr.rightOperand instanceof Variable) {
+                switch (expr.operator.value) {
+                    case "<=":
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MORE, ">")), aState, !negation);
+                        if (aState.get(expr.leftOperand.name).lower <= aState.get(expr.rightOperand.name).upper) {
+                            return aState.copyWith(
+                                expr.leftOperand.name,
+                                this.intervalFactory.getInterval(
+                                    aState.get(expr.leftOperand.name).lower,
+                                    Math.min(aState.get(expr.leftOperand.name).upper, aState.get(expr.rightOperand.name).upper)
+                                )
+                            ).copyWith(
+                                expr.rightOperand.name,
+                                this.intervalFactory.getInterval(
+                                    Math.max(aState.get(expr.leftOperand.name).lower, aState.get(expr.rightOperand.name).lower),
+                                    aState.get(expr.leftOperand.name).upper,
+                                )
+                            );
+                        } else {
+                            return AbstractProgramState.empty();
+                        }
+                    case ">":
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESSEQ, "<=")), aState, !negation);
+                        // x > y : y + 1 <= x
+                        return this.bSharp(
+                            new BooleanBinaryOperator(
+                                new ArithmeticBinaryOperator(
+                                    expr.rightOperand,
+                                    new Numeral(1),
+                                    new Token(TokenType.PLUS, "+")
+                                ),
+                                expr.leftOperand,
+                                new Token(TokenType.LESSEQ, "<=")
+                            ),
+                            aState.copy()
+                        );
+                    case ">=":
+                        // x>= y : y<=x
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESS, "<")), aState, !negation);
+                        return this.bSharp(
+                            new BooleanBinaryOperator(
+                                expr.rightOperand,
+                                expr.leftOperand,
+                                new Token(TokenType.LESSEQ, "<=")
+                            ),
+                            aState.copy()
+                        );
+                    case "<":
+                        // x < y : x + 1 <=y
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
+                        return this.bSharp(
+                            new BooleanBinaryOperator(
+                                new ArithmeticBinaryOperator(
+                                    expr.leftOperand,
+                                    new Numeral(1),
+                                    new Token(TokenType.PLUS, "+")
+                                ),
+                                expr.rightOperand,
+                                new Token(TokenType.LESSEQ, "<=")
+                            ),
+                            aState.copy()
+                        );
+                    case "==":
+                        // x = y : x <= y intersect y <= x
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.INEQ, "!=")), aState, !negation);
+                        return this.glb([
+                            this.bSharp(
+                                new BooleanBinaryOperator(
+                                    expr.leftOperand,
+                                    expr.rightOperand,
+                                    new Token(TokenType.LESSEQ, "<=")
+                                ),
+                                aState
+                            ),
+                            this.bSharp(
+                                new BooleanBinaryOperator(
+                                    expr.leftOperand,
+                                    expr.rightOperand,
+                                    new Token(TokenType.LESSEQ, "<=")
+                                ),
+                                aState
+                            )
+                        ])
+                    case "!=":
+                        // x != y : x < y lub y < x
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.EQ, "==")), aState, !negation);
+                        return this.lub([
+                            this.bSharp(
+                                new BooleanBinaryOperator(
+                                    expr.leftOperand,
+                                    expr.rightOperand,
+                                    new Token(TokenType.LESSEQ, "<=")
+                                ),
+                                aState
+                            ),
+                            this.bSharp(
+                                new BooleanBinaryOperator(
+                                    expr.leftOperand,
+                                    expr.rightOperand,
+                                    new Token(TokenType.LESSEQ, "<=")
+                                ),
+                                aState
+                            )
+                        ])
+                    default:
+                        throw Error(`bSharp: Unkwnown boolean binary operator: ${expr.operator.value}.`);
+                }
+            } else {
+                return this.aSharp(expr.rightOperand, this.aSharp(expr.leftOperand, aState.copy()).state.copy()).state.copy();
             }
-
-            let lE: Interval = this.aSharp(expr.leftOperand, aState);
-            let rE: Interval = this.aSharp(expr.rightOperand, aState);
-            if (this.intervalFactory.isBottom(lE) || this.intervalFactory.isBottom(rE)) return new AbstractProgramState();
-
-            switch (expr.operator.value) {
-                //  if (negation)
-                //  +----+----+----+----+----+----+----+
-                //  |  f | <  | <= |  > | >= | != | == |
-                //  +----+----+----+----+----+----+----+
-                //  |    | >= |  > | <= |  < | == | != |
-                //  +----+----+----+----+----+----+----+
-                case "!=":
-                    console.log("Not equals");
-                    if (this.notEquals(lE, rE)) return aState.copy();
-                    else return new AbstractProgramState();
-                case "==":
-                    if (this.equals(lE, rE)) return aState.copy();
-                    else return new AbstractProgramState();
-                case "<":
-                    if (this.lessThan(lE, rE)) return aState.copy();
-                    else return new AbstractProgramState();
-                case "<=":
-                    if (this.lessThanOrEqual(lE, rE)) return aState.copy();
-                    else return new AbstractProgramState();
-                case ">":
-                    if (this.greaterThan(lE, rE)) return aState.copy();
-                    else return new AbstractProgramState();
-                case ">=":
-                    if (this.greaterThanOrEqual(lE, rE)) return aState.copy();
-                    else return new AbstractProgramState();
-                default:
-                    throw Error("bSharp: Unknown boolean binary operator.");
-            }
-
         } else if (expr instanceof BooleanUnaryOperator) {
             switch (expr.operator.value) {
                 case "!":
-                    return this.bSharp(expr.booleanExpression, aState, !negation);
+                    return this.bSharp(expr.booleanExpression, aState.copy(), !negation);
                 default:
-                    break;
+                    throw Error(`bSharp: Unkwnown boolean unary operator: ${expr.operator.value}.`);
             }
         } else if (expr instanceof BooleanConcatenation) {
             switch (expr.operator.value) {
                 case '&&':
-                    return this.bSharp(expr.rightOperand, this.bSharp(expr.leftOperand, aState, negation), negation);
                 case '||':
-                    return this.lub([this.bSharp(expr.leftOperand, aState, negation), this.bSharp(expr.rightOperand, aState, negation)]);
+                    return this.bSharp(expr.rightOperand, this.bSharp(expr.leftOperand, aState.copy()))
                 default:
                     throw Error(`bSharp: Unkwnown boolean concatenation value : ${expr.operator.value}.`)
             }
         }
         throw Error("Unknown expression type.");
     }
+    private thresholdsHunt(current: any): Array<number> {
+        let thresholds: Array<number> = [];
+        if (current instanceof ArithmeticExpression) {
+            if (current instanceof Numeral) {
+                thresholds.push(current.value);
+                return thresholds;
+            }
+            if (current instanceof ArithmeticBinaryOperator) {
+                thresholds = thresholds.concat(this.thresholdsHunt(current.leftOperand));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.rightOperand));
+            }
+            if (current instanceof ArithmeticUnaryOperator)
+                thresholds = thresholds.concat(this.thresholdsHunt(current.operand));
+        } else if (current instanceof BooleanExpression) {
+            if (current instanceof BooleanBinaryOperator || current instanceof BooleanConcatenation) {
+                thresholds = thresholds.concat(this.thresholdsHunt(current.leftOperand));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.rightOperand));
+            }
+            if (current instanceof BooleanUnaryOperator)
+                thresholds = thresholds.concat(this.thresholdsHunt(current.booleanExpression));
+        }
+        else {
+            //Arithmetic Expressions
+            //Statements
+            if (current instanceof Assignment) thresholds = this.thresholdsHunt(current.value);
 
+            if (current instanceof Concatenation) {
+                thresholds = thresholds.concat(this.thresholdsHunt(current.firstStatement));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.secondStatement));
+            }
+            if (current instanceof IfThenElse) {
+                thresholds = thresholds.concat(this.thresholdsHunt(current.guard));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.thenBranch));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.elseBranch));
+            }
+            if (current instanceof Loop) {
+                thresholds = thresholds.concat(this.thresholdsHunt(current.guard));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.body));
+            }
+            if (current instanceof ForLoop) {
+                thresholds = thresholds.concat(this.thresholdsHunt(current.initialStatement));
+                thresholds = thresholds.concat(this.thresholdsHunt(current.incrementStatement));
+            }
+        }
+        return thresholds;
+    }
+    private thresholds: Array<number> | undefined = undefined;
     public dSharp(stmt: Statement, aState: AbstractProgramState): AbstractProgramState {
+        if (this.thresholds === undefined)
+            this.thresholds = ([this.intervalFactory.getMin, this.intervalFactory.getMax].concat(this.thresholdsHunt(stmt))).sort();
+
         if (stmt instanceof Assignment) {
-            let ret: AbstractProgramState = aState.copy();
-            ret.set(stmt.variable.name, this.aSharp(stmt.value, aState));
+            stmt.setPreCondition(aState.copy());
+            let ret = (this.aSharp(stmt.variable, aState.copy()).state.copyWith(stmt.variable.name, this.aSharp(stmt.value, aState).value));
+            stmt.setPostCondition(ret.copy());
             return ret;
         }
 
         if (stmt instanceof Skip) {
+            stmt.setPreCondition(aState.copy());
+            stmt.setPostCondition(aState.copy());
             return aState.copy();
         }
 
         if (stmt instanceof Concatenation) {
+            stmt.setPreCondition(aState.copy());
             let ret = this.dSharp(stmt.secondStatement, this.dSharp(stmt.firstStatement, aState.copy()).copy());
+            stmt.setPostCondition(ret.copy());
             return ret;
         }
 
         if (stmt instanceof IfThenElse) {
-            return this.lub([
+            stmt.setPreCondition(aState.copy());
+            let ret = this.lub([
                 this.bSharp(stmt.guard, this.dSharp(stmt.thenBranch, aState.copy())),
                 this.bSharp(stmt.guard, this.dSharp(stmt.elseBranch, aState.copy()), true),
             ])
+            stmt.setPostCondition(ret.copy());
+            return ret;
         }
 
         if (stmt instanceof WhileLoop) {
-            // Declare
             let currentState: AbstractProgramState = aState.copy();
             let prevState: AbstractProgramState;
-
-            stmt.setPreCondition(currentState.toString());
-            // Begin
+            stmt.setPreCondition(currentState.copy());
             do {
-                console.log("--------------------------------------------------");
-                prevState = currentState;
-                console.log("DSharp | previous iteration result:", prevState.toString());
+                prevState = currentState.copy();
 
-                let bsharpResult = this.bSharp(stmt.guard, prevState);
-                // this is the invariant that only affect the variables that are included into the stmt.guard
-                console.log("DSharp | bSharp result:", bsharpResult.toString());
-
-                console.log("BODY ---------------------------------------------");
-                let dsharpResult = this.dSharp(stmt.body, bsharpResult);
-
-                // Widening point
-                if (this._widening) dsharpResult = this.abstract_state_widening(bsharpResult, dsharpResult);
-
-                console.log("Result", (this._widening ? "(with widening):" : ":"), dsharpResult.toString());
-                console.log("END ----------------------------------------------");
-
-
-                // Results accumulations
+                //currentState = prevState LUB D#[body](B#[guard])
                 currentState = this.lub([
                     prevState,
-                    dsharpResult
+                    this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState))
                 ]);
-                console.log("DSharp | lub Result:", currentState.toString());
 
-                console.log("DSharp | current iteration result:", currentState.toString());
+                if (this._widening) currentState = this.abstract_state_widening(prevState, currentState);
 
-                console.log("--------------------------------------------------");
             } while (!prevState.isEqualTo(currentState));
-
-            // Set the invariant here after the widening loop has converged
-            stmt.setInvariant(currentState.toString());
+            stmt.setInvariant(currentState);
 
             if (this._narrowing) {
-                console.log("NARROWING ----------------------------------------");
-
-                let safe: number = 0;
+                prevState = aState.copy();
                 do {
-                    console.log("--------------------------------------------------");
-
-                    prevState = currentState;
-                    console.log("previous iteration result:", prevState.toString());
-
-                    let bsharpResult = this.bSharp(stmt.guard, prevState);
-                    console.log("DSharp | bSharp result:", bsharpResult.toString());
-
-                    console.log("BODY ---------------------------------------------");
-                    let dsharpResult = this.dSharp(stmt.body, bsharpResult);
-
-                    currentState = this.abstract_state_narrowing(prevState, dsharpResult);
-                    console.log("Narrowing result:", dsharpResult.toString());
-                    console.log("END ----------------------------------------------");
-
-                    console.log("DSharp | current iteration result:", currentState.toString());
-
-                    console.log("--------------------------------------------------");
-                } while (!prevState.isEqualTo(currentState) && safe < 100);
-                console.log("END NARROWING -------------------------------------");
+                    currentState = this.abstract_state_narrowing(
+                        currentState,
+                        this.lub([
+                            prevState,
+                            this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState))
+                        ])
+                    );
+                    prevState = currentState.copy();
+                } while (!prevState.isEqualTo(currentState));
             }
-
-            console.log("DSharp | Result before filtering:", currentState.toString());
             let ret = this.bSharp(stmt.guard, currentState, true);
-            console.log("DSharp | Returned result after filtering:", ret.toString());
-
-            stmt.setPostCondition(ret.toString());
+            stmt.setPostCondition(ret);
             return ret;
         }
 
         if (stmt instanceof RepeatUntilLoop) {
             // B#[b](lfp(λx.s# ∨ S​(D#[S]∘B#[not b])x)) ∘ D#[S]s
-            let currentState: AbstractProgramState = aState.copy();
-            let prevState: AbstractProgramState = currentState;
-
-            stmt.setPreCondition(currentState.toString());
-
-            // Begin
+            let currentState: AbstractProgramState = this.dSharp(stmt.body, aState.copy());
+            let prevState: AbstractProgramState;
+            stmt.setPreCondition(aState.copy())
             do {
-                console.log("--------------------------------------------------");
-                prevState = currentState;
-                console.log("DSharp | previous iteration result:", prevState.toString());
-
-                let bsharpResult = this.bSharp(stmt.guard, prevState, true);
-                console.log("DSharp | bSharp result:", bsharpResult.toString());
-
-                console.log("BODY ---------------------------------------------");
-                let dsharpResult = this.dSharp(stmt.body, bsharpResult);
-
-                // Widening point
-                if (this._widening) dsharpResult = this.abstract_state_widening(bsharpResult, dsharpResult);
-
-                console.log("Result", (this._widening ? "(with widening):" : ":"), dsharpResult.toString());
-                console.log("END ----------------------------------------------");
-
-
-                // Results accumulations
+                prevState = currentState.copy();
                 currentState = this.lub([
                     prevState,
-                    dsharpResult
+                    this.dSharp(stmt.body, this.bSharp(stmt.guard, prevState, true))
                 ]);
-                console.log("DSharp | lub Result:", currentState.toString());
-
-                console.log("DSharp | current iteration result:", currentState.toString());
-
-                console.log("--------------------------------------------------");
+                if (this._widening) currentState = this.abstract_state_widening(prevState, currentState);
             } while (!prevState.isEqualTo(currentState));
-
-            stmt.setInvariant(currentState.toString());
+            stmt.setInvariant(currentState.copy());
 
             if (this._narrowing) {
-                console.log("NARROWING ----------------------------------------");
-
-                let safe: number = 0;
+                prevState = aState.copy();
                 do {
-                    console.log("--------------------------------------------------");
-
-                    prevState = currentState;
-                    console.log("previous iteration result:", prevState.toString());
-
-                    let bsharpResult = this.bSharp(stmt.guard, prevState, true);
-                    console.log("DSharp | bSharp result:", bsharpResult.toString());
-
-                    console.log("BODY ---------------------------------------------");
-                    let dsharpResult = this.dSharp(stmt.body, bsharpResult);
-
-                    currentState = this.abstract_state_narrowing(prevState, dsharpResult);
-                    console.log("Narrowing result:", dsharpResult.toString());
-                    console.log("END ----------------------------------------------");
-
-                    console.log("DSharp | current iteration result:", currentState.toString());
-
-                    console.log("--------------------------------------------------");
-                } while (!prevState.isEqualTo(currentState) && safe < 100);
-                console.log("END NARROWING -------------------------------------");
+                    currentState = this.abstract_state_narrowing(
+                        currentState,
+                        this.lub([
+                            prevState,
+                            this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState, true))
+                        ])
+                    );
+                    prevState = currentState.copy();
+                } while (!prevState.isEqualTo(currentState));
             }
-
-            console.log("DSharp | Result before filtering:", currentState.toString());
             let ret = this.bSharp(stmt.guard, currentState);
-            console.log("DSharp | Returned result after filtering:", ret.toString());
-
-            stmt.setPostCondition(ret.toString());
+            stmt.setPostCondition(ret.copy());
             return ret;
         }
 
@@ -637,89 +761,30 @@ export class IntervalDomain extends AbstractDomain<Interval> {
             // Initialization: Execute S
             let currentState: AbstractProgramState = this.dSharp(stmt.initialStatement, aState);
             let prevState: AbstractProgramState;
-
-            stmt.setPreCondition(currentState.toString());
-
-            // Begin loop processing
+            stmt.setPreCondition(aState.copy());
             do {
-                console.log("--------------------------------------------------");
                 prevState = currentState;
-                console.log("ForLoop | previous iteration result:", prevState.toString());
-
-                // Evaluate the guard (B)
-                let bsharpResult = this.bSharp(stmt.guard, prevState);
-                console.log("ForLoop | bSharp result:", bsharpResult.toString());
-
-                // Execute the loop body (P)
-                let dsharpResult = this.dSharp(stmt.body, bsharpResult);
-
-                // Execute the update (T)
-                let updatedState = this.dSharp(stmt.incrementStatement, dsharpResult);
-
-                // Widening point
-                if (this._widening) updatedState = this.abstract_state_widening(dsharpResult, updatedState);
-
-                console.log("ForLoop Result", (this._widening ? "(with widening):" : ":"), updatedState.toString());
-                console.log("END ----------------------------------------------");
-
-                // Results accumulations
-                currentState = this.lub([prevState, updatedState]);
-                console.log("ForLoop | lub Result:", currentState.toString());
-
-                console.log("ForLoop | current iteration result:", currentState.toString());
-
-                console.log("--------------------------------------------------");
+                currentState = this.lub([
+                    prevState,
+                    this.dSharp(stmt.incrementStatement, this.dSharp(stmt.body, this.bSharp(stmt.guard, prevState)))]);
+                if (this._widening) currentState = this.abstract_state_widening(prevState, currentState);
             } while (!prevState.isEqualTo(currentState));
-
-            stmt.setInvariant(currentState.toString());
-
+            stmt.setInvariant(currentState.copy());
             if (this._narrowing) {
-                console.log("NARROWING ----------------------------------------");
-                let safe: number = 0;
+                prevState = aState.copy();
                 do {
-                    console.log("--------------------------------------------------");
-
-                    prevState = currentState;
-                    console.log("ForLoop previous iteration result:", prevState.toString());
-
-                    let bsharpResult = this.bSharp(stmt.guard, prevState);
-                    console.log("ForLoop | bSharp result:", bsharpResult.toString());
-
-                    let dsharpResult = this.dSharp(stmt.body, bsharpResult);
-
-                    let updatedState = this.dSharp(stmt.incrementStatement, dsharpResult);
-                    currentState = this.abstract_state_narrowing(prevState, updatedState);
-
-                    console.log("Narrowing result:", currentState.toString());
-                    console.log("END ----------------------------------------------");
-
-                    console.log("ForLoop | current iteration result:", currentState.toString());
-                    safe++;
-                    console.log("--------------------------------------------------");
-                } while (!prevState.isEqualTo(currentState) && safe < 100);
-                console.log("END NARROWING -------------------------------------");
+                    currentState = this.abstract_state_narrowing(
+                        currentState,
+                        this.lub([
+                            prevState,
+                            this.dSharp(stmt.incrementStatement, this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState)))
+                        ]));
+                    prevState = currentState.copy();
+                } while (!prevState.isEqualTo(currentState));
             }
-
-            console.log("ForLoop | Result before filtering:", currentState.toString());
             let ret = this.bSharp(stmt.guard, currentState, true);
-            console.log("ForLoop | Returned result after filtering:", ret.toString());
-
-            stmt.setPostCondition(ret.toString());
+            stmt.setPostCondition(ret.copy());
             return ret;
-        }
-
-        if (stmt instanceof IncrementOperator) {
-            let aux: AbstractProgramState = aState.copy();
-            aux.set(stmt.variable.name, this.op(aState.get(stmt.variable.name), '+', this.alpha(1)));
-            console.log("Increment operator result:", aux.toString());
-            return aux;
-
-        }
-
-        if (stmt instanceof DecrementOperator) {
-            let aux: AbstractProgramState = aState.copy();
-            aux.set(stmt.variable.name, this.op(aState.get(stmt.variable.name), '-', this.alpha(1)));
-            return aux;
         }
 
         throw Error("Dshapr : Unknown Statement.");

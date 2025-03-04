@@ -9,7 +9,8 @@ export class IntervalFactory {
     ) { }
 
     public getInterval(l: number, u: number): Interval {
-        return new Interval(Math.max(...[this.min, l]), Math.min(...[this.max, u]));
+        if(l>u) throw Error(`Interval creation: invalid bounds [${l}, ${u}]`);
+        return new Interval(Math.max(...[this.min, l]), Math.max(...[this.min, Math.min(...[this.max, u])]));
     }
 
     public isTop(i: Interval): boolean { return i.lower === this.min && i.upper === this.max };

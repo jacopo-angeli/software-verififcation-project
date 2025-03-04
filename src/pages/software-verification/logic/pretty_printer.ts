@@ -1,6 +1,6 @@
-import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, Numeral, Variable } from "../model/while+/arithmetic_expression";
+import { ArithmeticBinaryOperator, ArithmeticExpression, DecrementOperator, IncrementOperator, ArithmeticUnaryOperator, Numeral, Variable } from "../model/while+/arithmetic_expression";
 import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator, Boolean } from "../model/while+/boolean_expression";
-import { Assignment, Concatenation, DecrementOperator, ForLoop, IfThenElse, IncrementOperator, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
+import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
 
 // Helper function for indentation
 function indent(level: number): string {
@@ -17,8 +17,12 @@ function prettyPrintArithmetic(expr: ArithmeticExpression, level: number = 0): s
     return `${indent(level)}BinaryOperator: ${expr.operator.value}\n${prettyPrintArithmetic(expr.leftOperand, level + 1)}\n${prettyPrintArithmetic(expr.rightOperand, level + 1)}`;
   } else if (expr instanceof ArithmeticUnaryOperator) {
     return `${indent(level)}UnaryOperator: ${expr.operator.value}\n${prettyPrintArithmetic(expr.operand, level + 1)}`;
-  } else {
-    throw new Error("Unknown arithmetic expression type");
+  } else if (expr instanceof IncrementOperator) {
+    return `${indent(level)}IncrementOperator:\n${indent(level + 1)}Variable: ${expr.variable.toString()}\n${indent(level + 1)}`;
+  } else if (expr instanceof DecrementOperator) {
+    return `${indent(level)}DecrementOperator:\n${indent(level + 1)}Variable: ${expr.variable.toString()}\n${indent(level + 1)}`;
+  }else {
+    throw new Error(`AST printing: ${expr} Not an arithmentic expression.`);
   }
 }
 
@@ -33,7 +37,7 @@ function prettyPrintBoolean(expr: BooleanExpression, level: number = 0): string 
   } else if (expr instanceof BooleanUnaryOperator) {
     return `${indent(level)}UnaryOperation: ${expr.operator.value}\n${prettyPrintBoolean(expr.booleanExpression, level + 1)}`;
   } else {
-    throw new Error("Unknown boolean expression type");
+    throw new Error(`AST printing: ${expr} Not a boolean expression.`);
   }
 }
 
@@ -53,12 +57,8 @@ function prettyPrintStatement(statement: Statement, level: number = 0): string {
     return `${indent(level)}RepeatUntilLoop:\n${indent(level + 1)}Guard:\n${prettyPrintBoolean(statement.guard, level + 2)}\n${indent(level + 1)}Body:\n${prettyPrintStatement(statement.body, level + 2)}`;
   } else if (statement instanceof ForLoop) {
     return `${indent(level)}ForLoop:\n${indent(level + 1)}Initial:\n${prettyPrintStatement(statement.initialStatement, level + 2)}\n${indent(level + 1)}Guard:\n${prettyPrintBoolean(statement.guard, level + 2)}\n${indent(level + 1)}Increment:\n${prettyPrintStatement(statement.incrementStatement, level + 2)}\n${indent(level + 1)}Body:\n${prettyPrintStatement(statement.body, level + 2)}`;
-  } else if (statement instanceof IncrementOperator) {
-    return `${indent(level)}IncrementOperator:\n${indent(level + 1)}Variable: ${statement.variable.toString()}\n${indent(level + 1)}`;
-  } else if (statement instanceof DecrementOperator) {
-    return `${indent(level)}DecrementOperator:\n${indent(level + 1)}Variable: ${statement.variable.toString()}\n${indent(level + 1)}`;
-  } else {
-    throw new Error("Unknown statement type");
+  }  else {
+    throw new Error(`AST printing: ${statement} Not a statement.`);
   }
 }
 

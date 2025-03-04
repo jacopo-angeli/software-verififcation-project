@@ -8,7 +8,7 @@ export class ProgramState {
       this.state.set(key, value);
     } else {
       throw new InterpretationError(
-        `Variable ${key} not present in initial state.`,
+        `Runtime error: variable update failed (${key} not in the program state).`,
       );
     }
   }
@@ -21,11 +21,11 @@ export class ProgramState {
     if (this.state.has(key)) {
       return this.state.get(key) as number;
     }
-    throw new InterpretationError(`${key} is not present in initialState`);
+    throw new InterpretationError(`Runtime error: variable lookup failed (${key} not in the program state).`);
   }
 
   toString(): string {
-    if (this.state.size === 0) return "[ ⊥ ]";
+    if (this.state.size === 0) return "[ ]";
     let ret: string = "[ ";
     let i: number = 0;
     this.state.forEach((value, key) => {
@@ -52,5 +52,15 @@ export class ProgramState {
       ret.set(key, value, true);
     });
     return ret;
+  }
+
+  equalsTo(other: ProgramState): boolean {
+    if (this.size() !== other.size()) return false;
+    let keys = Array.from(this.state.keys());
+    for (let i = 0; i < this.size(); i++) {
+      if (!(other.contains(keys[i]))) return false;
+      if (other.get(keys[i]) !== this.get(keys[i])) return false;
+    }
+    return true;
   }
 }

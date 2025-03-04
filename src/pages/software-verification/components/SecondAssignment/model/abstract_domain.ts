@@ -16,7 +16,7 @@ export abstract class AbstractDomain<AbsValue> {
     protected abstract narrowing(a1: AbsValue, a2: AbsValue): AbsValue;
     protected abstract alpha(c: number): AbsValue;
     protected abstract op(i1: AbsValue, op: string, i2: AbsValue): AbsValue;
-    protected abstract aSharp(expr: ArithmeticExpression, aState: AbstractProgramState): AbsValue;
+    protected abstract aSharp(expr: ArithmeticExpression, aState: AbstractProgramState): {state:AbstractProgramState, value:AbsValue};
     protected abstract bSharp(expr: BooleanExpression, aState: AbstractProgramState): AbstractProgramState;
     public abstract dSharp(stmt: Statement, aState: AbstractProgramState): AbstractProgramState;
 }

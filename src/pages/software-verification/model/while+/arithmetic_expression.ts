@@ -62,3 +62,33 @@ export class Variable extends ArithmeticExpression {
     return this.name;
   }
 }
+
+export class IncrementOperator extends ArithmeticExpression {
+  variable: Variable;
+
+  constructor(
+    variable: Variable,
+  ) {
+    super();
+    this.variable = variable;
+  };
+
+  toString(): string {
+    return `${this.variable.name}++`;
+  }
+}
+
+export class DecrementOperator extends ArithmeticExpression {
+  variable: Variable;
+
+  constructor(
+    variable: Variable,
+  ) {
+    super();
+    this.variable = variable;
+  };
+
+  toString(): string {
+    return `${this.variable.name}--`;
+  }
+}

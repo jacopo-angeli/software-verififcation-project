@@ -4,32 +4,42 @@ export class AbstractProgramState {
     constructor(
         private _state = new Map<string, Interval>(),
     ) { }
-
-    toString(): string {
-        if (this._state.size === 0) return "⊥";
-        let ret: string = "{ ";
-        let i: number = 0;
-        this._state.forEach((value, key) => {
-            ret += `${key} : ${value.toString()}`;
-            i++;
-            if (i < this._state.size) ret += ", ";
-        })
-        ret += " }";
-        return ret;
-    }
-
-
-    set(key: string, value: Interval, f: boolean = false): void {
+    
+    public set(key: string, value: Interval, f: boolean = false): void {
         if (this._state.has(key) || f) {
             this._state.set(key, value);
         } else {
             throw new Error(
-                `Variable ${key} not present in initial state.`,
+                `Runtime error: Abstract state update failed (${key} not present in current state : ${this._state.toString()}).`,
             );
         }
     }
+    
+    public get(v: string): Interval {
+        if (this._state.has(v)) return (this._state.get(v) as Interval);
+        else throw Error(`Runtime error: Abstract state lookup failed (${v} not present in current state : ${this._state.toString()})`);
+    }
+    
+    toString(): string {
+        if (this._state.size === 0) return "{ }";
+        
+        let ret: string = "{ ";
+        let first: boolean = true;
+        
+        for(let key of this.variables()){
+            let el = this.get(key);
+            if(isNaN(el.lower) && isNaN(el.upper)) return "⊥";
+            if (!first) {
+                ret += ", ";
+            }
+            first = !first;
+            ret += `${key} : ${el.toString()}`;
+        }
+        
+        return ret += " }";
+    }
 
-    copy(): AbstractProgramState {
+    public copy(): AbstractProgramState {
         var ret: AbstractProgramState = new AbstractProgramState();
         this._state.forEach((value, key) => {
             ret.set(key, value, true);
@@ -63,10 +73,7 @@ export class AbstractProgramState {
 
     static empty() { return new AbstractProgramState() };
 
-    public get(v: string): Interval {
-        if (this._state.has(v)) return (this._state.get(v) as Interval);
-        else throw Error(`Variable ${v} not present in state : ${this._state.toString()}`);
-    }
+    
 
     public isEqualTo(other: AbstractProgramState): boolean {
         let mine: Array<string> = this.variables();

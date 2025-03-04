@@ -1,8 +1,15 @@
+import { AbstractProgramState } from "../../components/SecondAssignment/model/abstract_program_state";
 import { ArithmeticExpression, Variable } from "./arithmetic_expression";
 import { BooleanExpression } from "./boolean_expression";
 
 
 export abstract class Statement {
+  preCondition: AbstractProgramState | undefined;
+  postCondition: AbstractProgramState | undefined;
+
+
+  public setPreCondition(c: AbstractProgramState) { this.preCondition = c; }
+  public setPostCondition(c: AbstractProgramState) { this.postCondition = c; }
   protected indent(level: number = 0): string {
     return ' '.repeat(level * 2);
   }
@@ -89,9 +96,7 @@ export class IfThenElse extends Statement {
 export abstract class Loop extends Statement {
   body: Statement;
   guard: BooleanExpression;
-  preCondition: string | undefined;
-  invariant: string | undefined;
-  postCondition: string | undefined;
+  invariant: AbstractProgramState | undefined;
 
   constructor(body: Statement, guard: BooleanExpression) {
     super();
@@ -99,9 +104,7 @@ export abstract class Loop extends Statement {
     this.guard = guard;
   };
 
-  public setPreCondition(c: string) { this.preCondition = c; }
-  public setInvariant(c: string) { this.invariant = c; }
-  public setPostCondition(c: string) { this.postCondition = c; }
+  public setInvariant(c: AbstractProgramState) { this.invariant = c; }
 }
 
 export class WhileLoop extends Loop {
@@ -111,7 +114,7 @@ export class WhileLoop extends Loop {
   }
 
   toAnnotatedProgram(level: number = 0): string {
-    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}while(${this.guard.toString()}){\n${this.indent(level + 1)}//inv:${this.invariant}\n${this.body.toAnnotatedProgram(level + 1)}\n${this.indent(level)}}\n${this.indent(level)}//post:${this.postCondition}\n`;
+    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}while(${this.guard.toString()}){\n${this.indent(level + 1)}//inv:${this.invariant}\n${this.body.toAnnotatedProgram(level + 1)}\n${this.indent(level+1)}//post:${this.postCondition}\n${this.indent(level)}}`;
   }
 }
 
@@ -122,7 +125,7 @@ export class RepeatUntilLoop extends Loop {
   }
 
   toAnnotatedProgram(level: number = 0): string {
-    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}repeat{\n${this.indent(level + 1)}//inv:${this.invariant}\n${this.body.toAnnotatedProgram(level + 1)}\n${this.indent(level)}}until(${this.guard.toString()})\n${this.indent(level)}//post:${this.postCondition}`;
+    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}repeat{\n${this.body.toAnnotatedProgram(level + 1)}\n${this.indent(level)}${this.indent(level + 1)}//inv:${this.invariant}\n}until(${this.guard.toString()})\n${this.indent(level)}//post:${this.postCondition}`;
   }
 }
 
@@ -150,40 +153,3 @@ export class ForLoop extends Loop {
   }
 }
 
-export class IncrementOperator extends Statement {
-  variable: Variable;
-
-  constructor(
-    variable: Variable,
-  ) {
-    super();
-    this.variable = variable;
-  };
-
-  toString(): string {
-    return `s[${this.variable.toString()} -> A[${this.variable.toString()} + 1]s]`;
-  }
-
-  toAnnotatedProgram(level: number = 0): string {
-    return `${this.indent(level)}${this.variable.name}++`;
-  }
-}
-
-export class DecrementOperator extends Statement {
-  variable: Variable;
-
-  constructor(
-    variable: Variable,
-  ) {
-    super();
-    this.variable = variable;
-  };
-
-  toString(): string {
-    return `s[${this.variable.toString()} -> A[${this.variable.toString()} - 1]s]`;
-  }
-
-  toAnnotatedProgram(level: number = 0): string {
-    return `${this.indent(level)}${this.variable.name}--`;
-  }
-}
