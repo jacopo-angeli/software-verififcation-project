@@ -62,7 +62,7 @@ class B {
         if (expr instanceof BooleanUnaryOperator) {
             return {
                 state: B.eval(expr.booleanExpression, state.copy()).state,
-                value: !(B.eval(expr.booleanExpression, state))
+                value: !(B.eval(expr.booleanExpression, state.copy()).value)
             };
         }
 

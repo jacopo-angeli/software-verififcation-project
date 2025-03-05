@@ -21,7 +21,7 @@ class A {
                         value: A.eval(expr.leftOperand, state).value * A.eval(expr.rightOperand, state).value
                     }
                 case "/":
-                    if (A.eval(expr.rightOperand, state).value === 0) throw Error(`Runtime Error : Division by 0 (${expr.rightOperand.toString()}).`)
+                    if (A.eval(expr.rightOperand, state).value === 0) throw Error(`Runtime Error : Division by 0 (${expr.toString()}).`)
                     return {
                         state: returnState,
                         value: Math.floor(A.eval(expr.leftOperand, state).value / A.eval(expr.rightOperand, state).value)

@@ -7,9 +7,7 @@ class Sds {
     static eval(stmt: Statement, state: ProgramState, iterationLimit: number): ProgramState {
 
         if (stmt instanceof Assignment) {
-            let aux: ProgramState = A.eval(stmt.value, state).state;
-            aux.set(stmt.variable.name, A.eval(stmt.value, state).value);
-            return aux;
+            return (A.eval(stmt.value, state).state).copyWith(stmt.variable.name, A.eval(stmt.value, state).value);
         }
 
         if (stmt instanceof Skip) {
