@@ -1,15 +1,15 @@
-import { AbstractProgramState } from "../../components/SecondAssignment/model/abstract_program_state";
+import { IntervalAbstractProgramState } from "../../components/SecondAssignment/logic/IntervalDomain/types/state";
 import { ArithmeticExpression, Variable } from "./arithmetic_expression";
 import { BooleanExpression } from "./boolean_expression";
 
 
 export abstract class Statement {
-  preCondition: AbstractProgramState | undefined;
-  postCondition: AbstractProgramState | undefined;
+  preCondition: IntervalAbstractProgramState | undefined;
+  postCondition: IntervalAbstractProgramState | undefined;
 
 
-  public setPreCondition(c: AbstractProgramState) { this.preCondition = c; }
-  public setPostCondition(c: AbstractProgramState) { this.postCondition = c; }
+  public setPreCondition(c: IntervalAbstractProgramState) { this.preCondition = c; }
+  public setPostCondition(c: IntervalAbstractProgramState) { this.postCondition = c; }
   protected indent(level: number = 0): string {
     return ' '.repeat(level * 2);
   }
@@ -96,7 +96,7 @@ export class IfThenElse extends Statement {
 export abstract class Loop extends Statement {
   body: Statement;
   guard: BooleanExpression;
-  invariant: AbstractProgramState | undefined;
+  invariant: IntervalAbstractProgramState | undefined;
 
   constructor(body: Statement, guard: BooleanExpression) {
     super();
@@ -104,7 +104,7 @@ export abstract class Loop extends Statement {
     this.guard = guard;
   };
 
-  public setInvariant(c: AbstractProgramState) { this.invariant = c; }
+  public setInvariant(c: IntervalAbstractProgramState) { this.invariant = c; }
 }
 
 export class WhileLoop extends Loop {

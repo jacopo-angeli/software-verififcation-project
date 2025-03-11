@@ -1,4 +1,6 @@
-export class IntervalFactory {
+import { Interval } from "../types/interval";
+
+export class IntervalFactory{
     /*-----------------------------------------------------------
     To keep interval operation 
     -----------------------------------------------------------*/
@@ -43,28 +45,10 @@ export class IntervalFactory {
         const upper = Math.max(i1.upper, i2.upper);
         return new Interval(lower, upper);
     }
+    public randomInterval(): Interval {
+        const gen = [Math.random() * (this.max - this.min) + this.min, Math.random() * (this.max - this.min) + this.min].sort();
+        return new Interval(gen[0], gen[1]);
+    }
     public get getMax(): number { return this.max; }
     public get getMin(): number { return this.min; }
-}
-export class Interval {
-    private _lower: number;
-    private _upper: number;
-
-    constructor(l: number, u: number) {
-        this._lower = l;
-        this._upper = u;
-    };
-
-    public get lower(): number {
-        return this._lower;
-    }
-
-    public get upper(): number {
-        return this._upper;
-    }
-
-    public toString() {
-        if (isNaN(this._lower) && isNaN(this._upper)) return '⊥';
-        return `[${this._lower === Number.MIN_SAFE_INTEGER ? "-∞" : this._lower}, ${this._upper === Number.MAX_SAFE_INTEGER ? "+∞" : this._upper}]`;
-    }
 }

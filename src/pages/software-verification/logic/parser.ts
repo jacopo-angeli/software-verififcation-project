@@ -4,8 +4,9 @@ import { Boolean, BooleanBinaryOperator, BooleanConcatenation, BooleanExpression
 import { Variable, ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral, IncrementOperator, DecrementOperator} from "../model/while+/arithmetic_expression";
 import { ProgramState } from "../components/FirstAssignment/model/program_state";
 import { InitialStateFormatError, ProgramFormatError } from "../model/errors";
-import { AbstractProgramState } from "../components/SecondAssignment/model/abstract_program_state";
-import { IntervalFactory } from "../components/SecondAssignment/logic/IntDomain/interval_factory";
+import { IntervalFactory } from "../components/SecondAssignment/logic/IntervalDomain/factories/interval_factory";
+import { IntervalAbstractProgramState } from "../components/SecondAssignment/logic/IntervalDomain/types/state";
+import { Interval } from "../components/SecondAssignment/logic/IntervalDomain/types/interval";
 export class Parser {
 
     private static parseBool(i: string): boolean {
@@ -408,7 +409,7 @@ export class Parser {
         return res;
     }
 
-    static parseAbstractState(input: Array<Token>, intervalFactory: IntervalFactory): AbstractProgramState {
+    static parseAbstractState(input: Array<Token>, intervalFactory: IntervalFactory): IntervalAbstractProgramState {
 
         class Node {
             constructor(
@@ -482,7 +483,7 @@ export class Parser {
         })
 
 
-        let ret = new AbstractProgramState();
+        let ret = new Map<string, Interval>();
         arraySplit.forEach((e) => {
             if (isValid(validationTree, e)) { //Throw exception if not valid, to catch in the view
 
@@ -490,8 +491,8 @@ export class Parser {
 
                 let lower: number = intervalFactory.getMin;
                 let upper: number = intervalFactory.getMax;
-                if (e[2].type === TokenType.TOP) ret.set(varName, intervalFactory.Top, true);
-                else if (e[2].type === TokenType.BOTTOM) ret.set(varName, intervalFactory.Bottom, true);
+                if (e[2].type === TokenType.TOP) ret.set(varName, intervalFactory.Top);
+                else if (e[2].type === TokenType.BOTTOM) ret.set(varName, intervalFactory.Bottom);
                 else if (e[2].type === TokenType.BBOX) {
                     if (e[3].type === TokenType.NUM) {
                         lower = parseInt(e[3].value);
@@ -518,7 +519,7 @@ export class Parser {
                     }
                     else throw new InitialStateFormatError(`Format error on "${varName}" lower bound.`);
 
-                    ret.set(varName, intervalFactory.getInterval(lower, upper), true);
+                    ret.set(varName, intervalFactory.getInterval(lower, upper));
 
                 }
                 else throw new InitialStateFormatError(`Format error on variable "${varName}" value.`);
@@ -526,7 +527,7 @@ export class Parser {
                 throw new InitialStateFormatError(`Format error. Check the grammar above.`)
             }
         })
-        return ret;
+        return new IntervalAbstractProgramState(ret);
     }
 
 }

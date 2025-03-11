@@ -4,12 +4,8 @@ import Latex from "react-latex-next";
 import CodeEditor from "react-textarea-code-editor-2";
 
 import "./SecondAssignment.css";
-import { Lexer } from "../../../logic/lexer";
-import { Parser } from "../../../logic/parser";
-import { IntervalFactory } from "../logic/IntDomain/interval_factory";
 import { InitialStateFormatError, ProgramFormatError } from "../../../model/errors";
-import { IntervalDomain } from "../logic/IntDomain/intervals_domain";
-import prettyPrintStatement from "../../../logic/pretty_printer";
+import { AI_INT } from "../logic/program";
 
 const SecondAssignment = () => {
 	const [formFields, setFormFields] = useState({
@@ -38,7 +34,6 @@ const SecondAssignment = () => {
 		setErrors({ programFormatError: "", asbtractStateFormatError: "" });
 
 		// Instantiation of interval domain
-		let intervalDomain: IntervalDomain = new IntervalDomain(new IntervalFactory(formFields.lowerBound, formFields.upperBound), formFields.widening, formFields.narrowing);
 
 		setResults((prevState) => ({
 			...prevState,
@@ -50,35 +45,15 @@ const SecondAssignment = () => {
 		}));
 
 		try {
-			// Abstract state
-			let abstractState = Parser.parseAbstractState(Lexer.tokenize(formFields.abstractState), new IntervalFactory(formFields.lowerBound, formFields.upperBound));
-			setResults((prevState) => ({
-				...prevState,
-				abstractProgramState: abstractState.copy().toString(),
-			}));
 
-			// Program
-			let tokenList = Lexer.tokenize(formFields.program);
-			setResults((prevState) => ({
-				...prevState,
-				tokenList: tokenList.map((e) => e.toString()).join(" "),
-			}));
-
-			let program = Parser.parse(tokenList);
-			let ast = prettyPrintStatement(program);
-			setResults((prevState) => ({
-				...prevState,
-				ast: ast,
-				annotatedProgram: program.toAnnotatedProgram(),
-				denotationalSemantic: program.toString(),
-			}));
-
-			// Interpretation
-			let dSharpResult = intervalDomain.dSharp(program, abstractState);
-			setResults((prevState) => ({
-				...prevState,
-				dSharpResult: dSharpResult.toString(),
-			}));
+			let CurrentRun = AI_INT.api.WebApp(
+				formFields.program, 
+				formFields.abstractState, 
+				formFields.lowerBound, 
+				formFields.upperBound, 
+				formFields.widening, 
+				formFields.narrowing).toString();
+			console.log(CurrentRun);
 		} catch (e) {
 			console.log(e);
 			if (e instanceof InitialStateFormatError) {

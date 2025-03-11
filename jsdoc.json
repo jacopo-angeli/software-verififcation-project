@@ -1,0 +1,11 @@
+{
+    "source": {
+      "include": ["src/pages/software-verification/components/SecondAssignment/model"], 
+      "includePattern": "\\.(ts|js)$"
+    },
+    "opts": {
+      "destination": "./docs",
+      "recurse": true
+    }
+  }
+  
