@@ -244,21 +244,6 @@ export class IntervalDomain extends NumericalAbstractDomain<Interval> {
                         } else {
                             return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
                         }
-                    case "<":
-                        // x < n : x <= n-1
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
-                        if (aState.lookup(expr.leftOperand.name).lower < expr.rightOperand.value) {
-                            return aState.update(
-                                expr.leftOperand.name,
-                                this._IntervalFactory.getInterval(
-                                    aState.lookup(expr.leftOperand.name).lower,
-                                    Math.max(aState.lookup(expr.leftOperand.name).upper, expr.rightOperand.value - 1)
-                                )
-                            );
-                        } else {
-                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
-                        }
                     case ">=":
                         //  x >= n : n <= x 
                         // if x.b >= n [max(x.a, n)]
@@ -276,6 +261,15 @@ export class IntervalDomain extends NumericalAbstractDomain<Interval> {
                         } else {
                             return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
                         }
+                    case "<":
+                        // x < n : x <= n-1
+                        if (negation)
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
+                        if (aState.lookup(expr.leftOperand.name).lower < expr.rightOperand.value) {
+                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, new Numeral(expr.rightOperand.value - 1), new Token(TokenType.LESSEQ, "<=")), aState);
+                        } else {
+                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
+                        }
                     case ">":
                         // x > n : x >= n + 1
                         if (negation)
@@ -283,11 +277,7 @@ export class IntervalDomain extends NumericalAbstractDomain<Interval> {
                         return this.bSharp(
                             new BooleanBinaryOperator(
                                 expr.leftOperand,
-                                new ArithmeticBinaryOperator(
-                                    expr.rightOperand,
-                                    new Numeral(1),
-                                    new Token(TokenType.MINUS, "+")
-                                ),
+                                new Numeral(expr.rightOperand.value + 1),
                                 new Token(TokenType.LESSEQ, ">=")
                             ),
                             aState.copy()
@@ -441,12 +431,9 @@ export class IntervalDomain extends NumericalAbstractDomain<Interval> {
                 return this.aSharp(expr.rightOperand, this.aSharp(expr.leftOperand, aState.copy()).state.copy()).state.copy();
             }
         } else if (expr instanceof BooleanUnaryOperator) {
-            switch (expr.operator.value) {
-                case "!":
-                    return this.bSharp(expr.booleanExpression, aState.copy(), !negation);
-                default:
-                    throw Error(`bSharp: Unkwnown boolean unary operator: ${expr.operator.value}.`);
-            }
+            if (expr.operator.type === TokenType.NOT) 
+                return this.bSharp(expr.booleanExpression, aState.copy(), !negation);
+            throw Error(`bSharp: Unkwnown boolean unary operator: ${expr.operator.value}.`);
         } else if (expr instanceof BooleanConcatenation) {
             switch (expr.operator.value) {
                 case '&&':
