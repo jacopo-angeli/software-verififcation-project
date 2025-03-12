@@ -127,7 +127,70 @@ export abstract class AbstractProgramState<T extends AbstractValue> {
 
         return (this.constructor(lubState));
     };
-    public abstract glb(x: AbstractProgramState<T>, y: AbstractProgramState<T>): AbstractProgramState<T>;
-    public abstract widening(x: AbstractProgramState<T>, y: AbstractProgramState<T>): AbstractProgramState<T>;
+    public glb<T extends AbstractValue>(x: AbstractProgramState<T>, y: AbstractProgramState<T>): AbstractProgramState<T>{
+        let states = [x, y];
+
+        const glbState = new Map<string, T>();
+        const allKeys = new Set<string>();
+
+        // Collect all keys
+        states.forEach(state => {
+            for (var v of state.variables()) {
+                allKeys.add(v);
+            }
+        });
+
+        // Compute the glb for each key
+        allKeys.forEach(key => {
+            let glbValue: T | null = null;
+            states.forEach(state => {
+                if (state.has(key)) {
+                    const value: T = state.lookup(key);
+                    // Assuming T has a lub method or using its lub functionality directly
+                    if (glbValue === null) {
+                        glbValue = value;
+                    } else {
+                        // Here we assume lub is a method in T that merges values
+                        glbValue = glbValue.lub(value) as T; // Assuming lub is implemented in T
+                    }
+                }
+            });
+            if (glbValue !== null) {
+                glbState.set(key, glbValue); // Assuming glb is always an Interval
+            }
+        });
+
+        return this.constructor(glbState);
+    };
+    public widening<T extends AbstractValue>(x: AbstractProgramState<T>, y: AbstractProgramState<T>): AbstractProgramState<T> {
+        let widenedState = new Map<string, T>();
+
+        // Process variables in the previous state (x)
+        x.variables().forEach((variable) => {
+            if (y.has(variable)) {
+                // Get the intervals for the common variable
+                let prevInterval = x.lookup(variable);
+                let currentInterval = y.lookup(variable);
+                // Apply the widening operator
+                let widenedInterval = prevInterval.widening;
+                // Set the widened interval in the new state
+                widenedState.set(variable, widenedInterval);
+            } else {
+                // Keep the variable from x if it's not in y
+                widenedState.set(variable, x.lookup(variable));
+            }
+        });
+
+        // Process variables in the current state (y) that are not in x
+        y.variables().forEach((variable) => {
+            if (!x.has(variable)) {
+                // Keep the variable from y if it's not in x
+                widenedState.set(variable, y.lookup(variable));
+            }
+        });
+
+        // Return the new widened state
+        return new IntervalAbstractProgramState(widenedState);
+    };
     public abstract narrowing(x: AbstractProgramState<T>, y: AbstractProgramState<T>): AbstractProgramState<T>;
 }

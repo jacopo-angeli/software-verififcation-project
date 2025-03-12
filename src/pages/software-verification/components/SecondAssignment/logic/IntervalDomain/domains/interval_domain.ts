@@ -15,7 +15,7 @@ export class IntervalDomain extends NumericalAbstractDomain<Interval> {
     ) { super(); }
 
     protected _AbstracStateDomain: IntervalAbstractStateDomain = new IntervalAbstractStateDomain(this);
-    
+
     // ORDERING ---------------------------------------------------------------------------------------------
     protected equals(a: Interval, b: Interval): boolean {
         if (this._IntervalFactory.isBottom(a) && this._IntervalFactory.isBottom(b)) return true;
@@ -344,7 +344,7 @@ export class IntervalDomain extends NumericalAbstractDomain<Interval> {
                                 )
                             );
                         } else {
-                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
+                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom).update(expr.rightOperand.name, this._IntervalFactory.Bottom);
                         }
                     case ">":
                         if (negation)
