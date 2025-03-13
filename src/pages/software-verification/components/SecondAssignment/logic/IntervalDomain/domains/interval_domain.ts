@@ -4,7 +4,7 @@ import { Assignment, Concatenation, ForLoop, IfThenElse, Loop, RepeatUntilLoop, 
 import { Token, TokenType } from "../../../../../model/token";
 import { Interval } from "../types/interval";
 import { IntervalAbstractStateDomain } from "./abstract_state_domain";
-import { IntervalFactory } from "../factories/interval_factory";
+import { IntervalFactory } from "../../examples/IntervalDomain/types/interval_factory";
 import { IntervalAbstractProgramState } from "../types/state";
 import { NumericalAbstractDomain } from "../../../model/domains/numerical_abstract_domain";
 

@@ -1,6 +1,6 @@
 import { AbstractProgramState } from "../../types/abstract_state";
 import { AbstractValue } from "../../types/abstract_value";
-import { PowerSet_I } from "../../types/set";
+import { PowerSet_I } from "../../types/power_set";
 import { StateAbstractDomain } from "../state_abstract_domain";
 
 export abstract class StateAbstractDomainGC<T extends AbstractValue> extends StateAbstractDomain<T> {

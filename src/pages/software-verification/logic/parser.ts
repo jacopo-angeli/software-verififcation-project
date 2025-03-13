@@ -4,7 +4,7 @@ import { Boolean, BooleanBinaryOperator, BooleanConcatenation, BooleanExpression
 import { Variable, ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral, IncrementOperator, DecrementOperator} from "../model/while+/arithmetic_expression";
 import { ProgramState } from "../components/FirstAssignment/model/program_state";
 import { InitialStateFormatError, ProgramFormatError } from "../model/errors";
-import { IntervalFactory } from "../components/SecondAssignment/logic/IntervalDomain/factories/interval_factory";
+import { IntervalFactory } from "../components/SecondAssignment/logic/examples/IntervalDomain/types/interval_factory";
 import { IntervalAbstractProgramState } from "../components/SecondAssignment/logic/IntervalDomain/types/state";
 import { Interval } from "../components/SecondAssignment/logic/IntervalDomain/types/interval";
 export class Parser {

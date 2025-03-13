@@ -3,7 +3,7 @@ import { Parser } from "../../../logic/parser";
 import { Token } from "../../../model/token";
 import { Skip, Statement } from "../../../model/while+/statement";
 import { IntervalDomain } from "./IntervalDomain/domains/interval_domain";
-import { IntervalFactory } from "./IntervalDomain/factories/interval_factory";
+import { IntervalFactory } from "./examples/IntervalDomain/types/interval_factory";
 import { IntervalAbstractProgramState } from "./IntervalDomain/types/state";
 
 export class AI_INT {

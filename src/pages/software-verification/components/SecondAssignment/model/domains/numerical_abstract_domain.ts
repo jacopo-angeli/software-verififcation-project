@@ -1,5 +1,9 @@
+import { ArithmeticExpression } from "../../../../model/while+/arithmetic_expression";
+import { BooleanExpression } from "../../../../model/while+/boolean_expression";
+import { Statement } from "../../../../model/while+/statement";
+import { AbstractProgramState } from "../types/abstract_state";
 import { AbstractValue } from "../types/abstract_value";
-import { PowerSet_I } from "../types/set";
+import { PowerSet_I } from "../types/power_set";
 
 export abstract class NumericalAbstractDomain<T extends AbstractValue> {
     abstract leq: (X: T, Y: T) => boolean;
@@ -19,5 +23,10 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
         union: (X: T, Y: T) => T;
         intersection: (X: T, Y: T) => T;
     };
-    abstract widening: (X: T, Y: T) => T;
+    abstract widening: (x: T, y: T, options? : {tresholds?: Array<number>,},) => T
+    abstract SharpFunctions: {
+        E: (expr: ArithmeticExpression, aState: AbstractProgramState<T>) => any;
+        C: (expr: BooleanExpression, aState: AbstractProgramState<T>) => any;
+        S: (expr: Statement, aState: AbstractProgramState<T>) => any;
+    }
 }
