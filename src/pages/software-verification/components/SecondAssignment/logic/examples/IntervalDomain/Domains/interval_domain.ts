@@ -130,7 +130,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 const leftEval = this.SharpFunctions.E(expr.leftOperand, aState);
                 const rightEval = this.SharpFunctions.E(expr.rightOperand, leftEval.state);
                 let newState = rightEval.state;
-        
+
                 switch (expr.operator.value) {
                     case "<":
                         newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.lessThan(x, rightEval.value));
@@ -158,21 +158,17 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 }
                 return newState;
             }
-            
+
             if (expr instanceof BooleanUnaryOperator) {
-                if (expr.operator.value === "!") {
+                if ([TokenType.NOT].includes(expr.operator.type))
                     return this.SharpFunctions.C(expr.negate(), aState);
-                }
             }
-            
+
             if (expr instanceof BooleanConcatenation) {
-                if (expr.operator.value === "&&") {
-                    return this.C(expr.rightOperand, this.C(expr.leftOperand, aState));
-                } else if (expr.operator.value === "||") {
-                    return this.SetOperators.union(this.C(expr.leftOperand, aState), this.C(expr.rightOperand, aState));
-                }
+                if ([TokenType.AND, TokenType.OR].includes(expr.operator.type))
+                    return this.SharpFunctions.C(expr.rightOperand, this.SharpFunctions.C(expr.leftOperand, aState));
             }
-            
+
             throw Error("Unknown Boolean expression type.");
         },
         S: (expr: Statement, aState: AbstractProgramState<Interval>): any => {

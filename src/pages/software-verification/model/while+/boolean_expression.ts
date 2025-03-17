@@ -1,24 +1,73 @@
 import { Token, TokenType } from "../token";
-import { ArithmeticExpression } from "./arithmetic_expression"
+import { ArithmeticBinaryOperator, ArithmeticExpression, Numeral } from "./arithmetic_expression"
 
 export abstract class BooleanExpression {
   abstract negate(): BooleanExpression;
 }
 
 export class BooleanBinaryOperator extends BooleanExpression {
-  leftOperand: ArithmeticExpression;
-  rightOperand: ArithmeticExpression;
-  operator: Token;
 
   constructor(
-    leftOperand: ArithmeticExpression,
-    rightOperand: ArithmeticExpression,
-    operator: Token,
+    private leftOperand: ArithmeticExpression,
+    private rightOperand: ArithmeticExpression,
+    private operator: Token,
   ) {
     super();
-    this.leftOperand = leftOperand;
-    this.rightOperand = rightOperand;
-    this.operator = operator;
+  };
+
+  canonicalForm(): BooleanExpression {
+    switch (this.operator.type) {
+      case TokenType.LESSEQ:
+        return new BooleanBinaryOperator(
+          new ArithmeticBinaryOperator(
+            this.leftOperand, this.rightOperand, new Token(TokenType.MINUS, "-")
+          ),
+          new Numeral(0),
+          new Token(TokenType.LESSEQ, "<=")
+        );
+      case TokenType.LESS:
+        return new BooleanBinaryOperator(
+          new ArithmeticBinaryOperator(
+            new ArithmeticBinaryOperator(
+              this.leftOperand, this.rightOperand, new Token(TokenType.MINUS, "-")
+            ),
+            new Numeral(1),
+            new Token(TokenType.MINUS, "+")
+          ),
+          new Numeral(0),
+          new Token(TokenType.LESSEQ, "<=")
+        );
+      case TokenType.MORE:
+        this.leftOperand = new ArithmeticBinaryOperator(
+          new ArithmeticBinaryOperator(
+            rightOperand, leftOperand, new Token(TokenType.MINUS, "-")
+          ),
+          new Numeral(1),
+          new Token(TokenType.MINUS, "+")
+        );
+        this.operator = new Token(TokenType.LESSEQ, "<=");
+        break;
+      case TokenType.MOREEQ:
+        this.leftOperand = new ArithmeticBinaryOperator(
+          rightOperand, leftOperand, new Token(TokenType.MINUS, "-")
+        );
+        this.operator = new Token(TokenType.LESSEQ, "<=");
+        break;
+      case TokenType.EQ:
+        this.leftOperand = new ArithmeticBinaryOperator(
+          leftOperand, rightOperand, new Token(TokenType.MINUS, "-")
+        );
+        this.operator = operator;
+        break;
+      case TokenType.INEQ:
+        this.leftOperand = new ArithmeticBinaryOperator(
+          leftOperand, rightOperand, new Token(TokenType.MINUS, "-")
+        );
+        this.operator = operator;
+        break;
+      default:
+        throw Error("Boolean binary operator constructor: impossible build.")
+    }
   };
 
   negate(): BooleanExpression {
