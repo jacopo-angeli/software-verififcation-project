@@ -20,21 +20,11 @@ export class Interval extends AbstractValue {
 }
 
 export class Bottom extends Interval{
-    constructor(
-        _lower: number,
-        _upper: number,
-        _meta: { m: number, n: number }
-    ) { super(_lower, _upper, _meta); };
     public toString() {
         return "⊥ : " + super.toString();
     }
 }
 export class Top extends Interval{
-    constructor(
-        _lower: number,
-        _upper: number,
-        _meta: { m: number, n: number }
-    ) { super(_lower, _upper, _meta); };
     public toString() {
         return "T : " + super.toString();
     }

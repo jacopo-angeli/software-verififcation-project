@@ -26,7 +26,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
     abstract widening: (x: T, y: T, options? : {tresholds?: Array<number>,},) => T
     abstract SharpFunctions: {
         E: (expr: ArithmeticExpression, aState: AbstractProgramState<T>) => any;
-        C: (expr: BooleanExpression, aState: AbstractProgramState<T>) => any;
-        S: (expr: Statement, aState: AbstractProgramState<T>) => any;
+        C: (expr: BooleanExpression, aState: AbstractProgramState<T>) => AbstractProgramState<T>;
+        S: (expr: Statement, aState: AbstractProgramState<T>) => AbstractProgramState<T>;
     }
 }
