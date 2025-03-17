@@ -126,228 +126,54 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             }
         },
         C: (expr: BooleanExpression, aState: AbstractProgramState<Interval>): AbstractProgramState<Interval> => {
-            aState = aState.clone();
-            if ((expr instanceof BooleanBinaryOperator) && (expr.leftOperand instanceof Variable && expr.rightOperand instanceof Numeral)) {
+            if (expr instanceof BooleanBinaryOperator) {
+                const leftEval = this.SharpFunctions.E(expr.leftOperand, aState);
+                const rightEval = this.SharpFunctions.E(expr.rightOperand, leftEval.state);
+                let newState = rightEval.state;
+        
                 switch (expr.operator.value) {
-                    case "<=":
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MORE, ">")), aState, !negation);
-                        if (aState.lookup(expr.leftOperand.name).lower <= expr.rightOperand.value) {
-                            return aState.update(
-                                expr.leftOperand.name,
-                                this._IntervalFactory.getInterval(
-                                    aState.lookup(expr.leftOperand.name).lower,
-                                    Math.min(aState.lookup(expr.leftOperand.name).upper, expr.rightOperand.value)
-                                )
-                            );
-                        } else {
-                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
-                        }
-                    case ">=":
-                        //  x >= n : n <= x 
-                        // if x.b >= n [max(x.a, n)]
-                        // else bottom
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESS, "<")), aState, !negation);
-                        if (aState.lookup(expr.leftOperand.name).upper >= expr.rightOperand.value) {
-                            return aState.update(
-                                expr.leftOperand.name,
-                                this._IntervalFactory.getInterval(
-                                    Math.max(aState.lookup(expr.leftOperand.name).lower, expr.rightOperand.value),
-                                    aState.lookup(expr.leftOperand.name).upper,
-                                )
-                            );
-                        } else {
-                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
-                        }
                     case "<":
-                        // x < n : x <= n-1
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
-                        if (aState.lookup(expr.leftOperand.name).lower < expr.rightOperand.value) {
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, new Numeral(expr.rightOperand.value - 1), new Token(TokenType.LESSEQ, "<=")), aState);
-                        } else {
-                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
-                        }
-                    case ">":
-                        // x > n : x >= n + 1
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESSEQ, "<=")), aState, !negation);
-                        return this.bSharp(
-                            new BooleanBinaryOperator(
-                                expr.leftOperand,
-                                new Numeral(expr.rightOperand.value + 1),
-                                new Token(TokenType.LESSEQ, ">=")
-                            ),
-                            aState.copy()
-                        )
-                    case "==":
-                        // x = n : s[x->n] if a<=n<=b, bot otherwise
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.INEQ, "!=")), aState, !negation);
-                        if (aState.lookup(expr.leftOperand.name).lower <= expr.rightOperand.value && expr.rightOperand.value <= aState.lookup(expr.leftOperand.name).upper) {
-                            return aState.update(expr.leftOperand.name, this.alpha(expr.rightOperand.value));
-                        } else return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom);
-                    case "!=":
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.EQ, "==")), aState, !negation);
-                        // x != n : (x < n) lub (x > n)
-                        return this._AbstracStateDomain.lub(
-                            this.bSharp(
-                                new BooleanBinaryOperator(
-                                    expr.leftOperand,
-                                    expr.rightOperand,
-                                    new Token(TokenType.LESS, "<")
-                                ),
-                                aState
-                            ),
-                            this.bSharp(
-                                new BooleanBinaryOperator(
-                                    expr.leftOperand,
-                                    expr.rightOperand,
-                                    new Token(TokenType.LESS, ">")
-                                ),
-                                aState
-                            )
-                        );
-                    default:
-                        throw Error(`bSharp: Unkwnown boolean binary operator: ${expr.operator.value}.`);
-                }
-            }
-            if ((expr instanceof BooleanBinaryOperator) && (expr.leftOperand instanceof Variable && expr.rightOperand instanceof Variable)) {
-                switch (expr.operator.value) {
+                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.lessThan(x, rightEval.value));
+                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.greaterThan(x, leftEval.value));
+                        break;
                     case "<=":
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MORE, ">")), aState, !negation);
-                        if (aState.lookup(expr.leftOperand.name).lower <= aState.lookup(expr.rightOperand.name).upper) {
-                            return aState.update(
-                                expr.leftOperand.name,
-                                this._IntervalFactory.getInterval(
-                                    aState.lookup(expr.leftOperand.name).lower,
-                                    Math.min(aState.lookup(expr.leftOperand.name).upper, aState.lookup(expr.rightOperand.name).upper)
-                                )
-                            ).update(
-                                expr.rightOperand.name,
-                                this._IntervalFactory.getInterval(
-                                    Math.max(aState.lookup(expr.leftOperand.name).lower, aState.lookup(expr.rightOperand.name).lower),
-                                    aState.lookup(expr.leftOperand.name).upper,
-                                )
-                            );
-                        } else {
-                            return aState.update(expr.leftOperand.name, this._IntervalFactory.Bottom).update(expr.rightOperand.name, this._IntervalFactory.Bottom);
-                        }
-                    case ">":
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESSEQ, "<=")), aState, !negation);
-                        // x > y : y + 1 <= x
-                        return this.bSharp(
-                            new BooleanBinaryOperator(
-                                new ArithmeticBinaryOperator(
-                                    expr.rightOperand,
-                                    new Numeral(1),
-                                    new Token(TokenType.PLUS, "+")
-                                ),
-                                expr.leftOperand,
-                                new Token(TokenType.LESSEQ, "<=")
-                            ),
-                            aState.copy()
-                        );
-                    case ">=":
-                        // x>= y : y<=x
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.LESS, "<")), aState, !negation);
-                        return this.bSharp(
-                            new BooleanBinaryOperator(
-                                expr.rightOperand,
-                                expr.leftOperand,
-                                new Token(TokenType.LESSEQ, "<=")
-                            ),
-                            aState.copy()
-                        );
-                    case "<":
-                        // x < y : x + 1 <=y
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.MOREEQ, ">=")), aState, !negation);
-                        return this.bSharp(
-                            new BooleanBinaryOperator(
-                                new ArithmeticBinaryOperator(
-                                    expr.leftOperand,
-                                    new Numeral(1),
-                                    new Token(TokenType.PLUS, "+")
-                                ),
-                                expr.rightOperand,
-                                new Token(TokenType.LESSEQ, "<=")
-                            ),
-                            aState.copy()
-                        );
-                    case "==":
-                        // x = y : x <= y intersect y <= x
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.INEQ, "!=")), aState, !negation);
-                        return this._AbstracStateDomain.glb(
-                            this.bSharp(
-                                new BooleanBinaryOperator(
-                                    expr.leftOperand,
-                                    expr.rightOperand,
-                                    new Token(TokenType.LESSEQ, "<=")
-                                ),
-                                aState
-                            ),
-                            this.bSharp(
-                                new BooleanBinaryOperator(
-                                    expr.leftOperand,
-                                    expr.rightOperand,
-                                    new Token(TokenType.LESSEQ, "<=")
-                                ),
-                                aState
-                            )
-                        )
+                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.lessThanOrEqual(x, rightEval.value));
+                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.greaterThanOrEqual(x, leftEval.value));
+                        break;
+                    case "=":
+                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.intersect(x, rightEval.value));
+                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.intersect(x, leftEval.value));
+                        break;
                     case "!=":
-                        // x != y : x < y lub y < x
-                        if (negation)
-                            return this.bSharp(new BooleanBinaryOperator(expr.leftOperand, expr.rightOperand, new Token(TokenType.EQ, "==")), aState, !negation);
-                        return this._AbstracStateDomain.lub(
-                            this.bSharp(
-                                new BooleanBinaryOperator(
-                                    expr.leftOperand,
-                                    expr.rightOperand,
-                                    new Token(TokenType.LESSEQ, "<=")
-                                ),
-                                aState
-                            ),
-                            this.bSharp(
-                                new BooleanBinaryOperator(
-                                    expr.leftOperand,
-                                    expr.rightOperand,
-                                    new Token(TokenType.LESSEQ, "<=")
-                                ),
-                                aState
-                            )
-                        )
-                    default:
-                        throw Error(`bSharp: Unkwnown boolean binary operator: ${expr.operator.value}.`);
+                        // In generale, l'intervallo rimane lo stesso, a meno di analisi più precise
+                        break;
+                    case ">=":
+                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.greaterThanOrEqual(x, rightEval.value));
+                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.lessThanOrEqual(x, leftEval.value));
+                        break;
+                    case ">":
+                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.greaterThan(x, rightEval.value));
+                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.lessThan(x, leftEval.value));
+                        break;
                 }
-
+                return newState;
             }
-            if (expr instanceof BooleanBinaryOperator)
-                return this.SharpFunctions.E(expr.rightOperand, this.SharpFunctions.E(expr.leftOperand, aState).state).state;
-
+            
             if (expr instanceof BooleanUnaryOperator) {
-                if (expr.operator.type === TokenType.NOT)
-                    return this.SharpFunctions.C(expr.booleanExpression, aState, !negation);
-                throw Error(`bSharp: Unkwnown boolean unary operator: ${expr.operator.value}.`);
-            }
-            if (expr instanceof BooleanConcatenation) {
-                switch (expr.operator.value) {
-                    case '&&':
-                    case '||':
-                        return this.bSharp(expr.rightOperand, this.bSharp(expr.leftOperand, aState.copy()))
-                    default:
-                        throw Error(`bSharp: Unkwnown boolean concatenation value : ${expr.operator.value}.`)
+                if (expr.operator.value === "!") {
+                    return this.SharpFunctions.C(expr.negate(), aState);
                 }
             }
-
-            throw Error("Unknown expression type.");
+            
+            if (expr instanceof BooleanConcatenation) {
+                if (expr.operator.value === "&&") {
+                    return this.C(expr.rightOperand, this.C(expr.leftOperand, aState));
+                } else if (expr.operator.value === "||") {
+                    return this.SetOperators.union(this.C(expr.leftOperand, aState), this.C(expr.rightOperand, aState));
+                }
+            }
+            
+            throw Error("Unknown Boolean expression type.");
         },
         S: (expr: Statement, aState: AbstractProgramState<Interval>): any => {
 
