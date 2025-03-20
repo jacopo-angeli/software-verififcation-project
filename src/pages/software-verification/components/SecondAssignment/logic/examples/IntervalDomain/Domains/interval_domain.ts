@@ -7,7 +7,7 @@ import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator
 import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator } from "../../../../../../model/while+/boolean_expression";
 import { Statement } from "../../../../../../model/while+/statement";
 import { AbstractProgramState } from "../../../../model/types/abstract_state";
-import { TokenType } from "../../../../../../model/token";
+import { BNode, BTree, LNode, UNode } from "../types/b-tree";
 
 export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
     constructor(
@@ -35,6 +35,9 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         },
     };
     BinaryOperators = {
+        minus: (x: Interval): Interval => {
+            return this._IntervalFactory.new(-x.upper, -x.lower)
+        },
         add: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
             return this._IntervalFactory.new(x.lower + y.lower, x.upper + y.upper)
@@ -52,6 +55,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             return this._IntervalFactory.new(Math.min(...products), Math.max(...products));
         },
         divide: (x: Interval, y: Interval): Interval => {
+            if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
             if (1 <= y.lower)
                 return this._IntervalFactory.new(
                     Math.min(x.lower / y.lower, x.lower / y.upper),
@@ -79,13 +83,16 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
     widening = (x: Interval, y: Interval, options?: { tresholds?: Array<number>; }): Interval => {
         return x
     };
+    narrowing = (x: Interval, y: Interval, options?: { tresholds?: Array<number>; }): Interval => {
+        return x
+    };
     SharpFunctions = {
         E: (expr: ArithmeticExpression, aState: AbstractProgramState<Interval>): { state: AbstractProgramState<Interval>, value: Interval } => {
             if (expr instanceof Numeral) {
-                return { state: aState, value: this.alpha(new Set(expr.value, expr.value)) };
+                return { state: aState.clone(), value: this.alpha(new Set(expr.value, expr.value)) };
             }
             if (expr instanceof Variable) {
-                return { state: aState, value: aState.lookup(expr.name) };
+                return { state: aState.clone(), value: aState.lookup(expr.name) };
             }
             if (expr instanceof ArithmeticUnaryOperator) {
                 return {
@@ -107,13 +114,13 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             }
             if (expr instanceof IncrementOperator) {
                 return {
-                    state: aState.update(expr.variable.name, this.BinaryOperators.add(aState.lookup(expr.variable.name), this.alpha(new Set(1, 1)))),
+                    state: aState.clone().update(expr.variable.name, this.BinaryOperators.add(aState.lookup(expr.variable.name), this.alpha(new Set(1, 1)))),
                     value: this.BinaryOperators.add(aState.lookup(expr.variable.name), this.alpha(new Set(1, 1)))
                 };
             }
             if (expr instanceof DecrementOperator) {
                 return {
-                    state: aState.update(expr.variable.name, this.BinaryOperators.subtract(aState.lookup(expr.variable.name), this.alpha(new Set(1, 1)))),
+                    state: aState.clone().update(expr.variable.name, this.BinaryOperators.subtract(aState.lookup(expr.variable.name), this.alpha(new Set(1, 1)))),
                     value: this.BinaryOperators.subtract(aState.lookup(expr.variable.name), this.alpha(new Set(1, 1)))
                 };
             }
@@ -126,50 +133,63 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             }
         },
         C: (expr: BooleanExpression, aState: AbstractProgramState<Interval>): AbstractProgramState<Interval> => {
-            if (expr instanceof BooleanBinaryOperator) {
-                const leftEval = this.SharpFunctions.E(expr.leftOperand, aState);
-                const rightEval = this.SharpFunctions.E(expr.rightOperand, leftEval.state);
-                let newState = rightEval.state;
 
-                switch (expr.operator.value) {
-                    case "<":
-                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.lessThan(x, rightEval.value));
-                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.greaterThan(x, leftEval.value));
-                        break;
-                    case "<=":
-                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.lessThanOrEqual(x, rightEval.value));
-                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.greaterThanOrEqual(x, leftEval.value));
-                        break;
-                    case "=":
-                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.intersect(x, rightEval.value));
-                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.intersect(x, leftEval.value));
-                        break;
-                    case "!=":
-                        // In generale, l'intervallo rimane lo stesso, a meno di analisi più precise
-                        break;
-                    case ">=":
-                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.greaterThanOrEqual(x, rightEval.value));
-                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.lessThanOrEqual(x, leftEval.value));
-                        break;
-                    case ">":
-                        newState = newState.refine(expr.leftOperand, (x) => this._IntervalFactory.greaterThan(x, rightEval.value));
-                        newState = newState.refine(expr.rightOperand, (x) => this._IntervalFactory.lessThan(x, leftEval.value));
-                        break;
+            const hc4Revise = (expression: ArithmeticExpression, constraint: Interval): Interval => {
+                const computedIntervals = new Map<ArithmeticExpression, Interval>();
+
+                // Step 1: Bottom-up evaluation
+                const evaluate = (node: ArithmeticExpression, aState: AbstractProgramState<Interval>): Interval => {
+                    if (node instanceof Numeral) {
+                        return this._IntervalFactory.new(node.value, node.value);
+                    }
+                    if (node instanceof Variable) {
+                        return aState.lookup(node.name);
+                    }
+                    const p = new Map<string, (x: Interval, y: Interval) => Interval>([
+                        ["+", (x, y) => this.BinaryOperators.add(x, y)],
+                        ["-", (x, y) => this.BinaryOperators.subtract(x, y)],
+                        ["*", (x, y) => this.BinaryOperators.multiply(x, y)],
+                        ["/", (x, y) => this.BinaryOperators.divide(x, y)]
+                    ]);
+                    if (node instanceof ArithmeticBinaryOperator) {
+                        const left = this.SharpFunctions.E(node.leftOperand, aState);
+                        const right = this.SharpFunctions.E(node.rightOperand, aState);
+                        // return (left, right, node.operator.value);
+                    }
+                    if (node instanceof ArithmeticUnaryOperator) {
+                        // const operand = evaluate(node.operand);
+                        // return applyUnaryOperator(operand, node.operator.value);
+                    }
+                    throw new Error("Unsupported expression node");
                 }
-                return newState;
+
+                // const rootInterval = evaluate(expression);
+                // computedIntervals.set(expression, rootInterval.intersect(constraint));
+
+                // Step 3: Top-down propagation
+                function refine(node: ArithmeticExpression, refinedInterval: Interval) {
+                    computedIntervals.set(node, refinedInterval);
+
+                    if (node instanceof ArithmeticBinaryOperator) {
+                        const left = computedIntervals.get(node.leftOperand)!;
+                        const right = computedIntervals.get(node.rightOperand)!;
+                        // const [newLeft, newRight] = backwardRefine(left, right, refinedInterval, node.operator.value);
+                        // refine(node.leftOperand, newLeft);
+                        // refine(node.rightOperand, newRight);
+                    }
+                    if (node instanceof ArithmeticUnaryOperator) {
+                        const operand = computedIntervals.get(node.operand)!;
+                        // refine(node.operand, backwardRefineUnary(operand, refinedInterval, node.operator.value));
+                    }
+                }
+
+                // refine(expression, computedIntervals.get(expression)!);
+                return computedIntervals.get(expression)!;
             }
 
-            if (expr instanceof BooleanUnaryOperator) {
-                if ([TokenType.NOT].includes(expr.operator.type))
-                    return this.SharpFunctions.C(expr.negate(), aState);
-            }
 
-            if (expr instanceof BooleanConcatenation) {
-                if ([TokenType.AND, TokenType.OR].includes(expr.operator.type))
-                    return this.SharpFunctions.C(expr.rightOperand, this.SharpFunctions.C(expr.leftOperand, aState));
+            if (expr instanceof BooleanBinaryOperator) {
             }
-
-            throw Error("Unknown Boolean expression type.");
         },
         S: (expr: Statement, aState: AbstractProgramState<Interval>): any => {
 
@@ -178,5 +198,129 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
 
 
 
+    private propagationAlgorithm(expr: BooleanBinaryOperator, aState: AbstractProgramState<Interval>): AbstractProgramState<Interval> {
+        // PRE: expr is in canonical form
 
+        // Firstly, the expressions are evaluated by induction on the syntax tree, bottom-up,
+        // from leaves (variables and constants) to the expression root, similarly to SharpFunctions.E in Fig. 4.1;
+        // however, we remember the abstract value at each syntax tree node
+
+
+        // let R = evaluate(expr, aState);
+        // this.SetOperators.intersection(R, this._IntervalFactory.getLessThanOrEqual(0));
+        // return propagate(R, aState); 
+
+        const evaluate = (expr: ArithmeticExpression, aState: AbstractProgramState<Interval>): BTree<Interval> => {
+            if (expr instanceof Variable) {
+                return new LNode(this.SharpFunctions.E(expr, aState).value, "Var");
+            }
+            if (expr instanceof Numeral) {
+                return new LNode(this.SharpFunctions.E(expr, aState).value, "Num");
+            }
+            if (expr instanceof ArithmeticBinaryOperator) {
+                return new BNode(
+                    this.SharpFunctions.E(expr, aState).value,
+                    evaluate(expr.leftOperand, aState),
+                    evaluate(expr.rightOperand, aState),
+                    expr.operator.value
+                )
+            }
+            if (expr instanceof ArithmeticUnaryOperator) {
+                return new UNode(
+                    this.SharpFunctions.E(expr, aState).value,
+                    evaluate(expr.operand, aState),
+                )
+            }
+            if (expr instanceof IncrementOperator) {
+                return new LNode(
+                    this.SharpFunctions.E(expr, aState).value,
+                    "Inc"
+                )
+            }
+            if (expr instanceof DecrementOperator) {
+                return new LNode(
+                    this.SharpFunctions.E(expr, aState).value,
+                    "Dec"
+                )
+            }
+            throw Error(`Propagation algorithm: unkwnown arithmetic expression(${expr.toString()}).`)
+        }
+
+        let AVT = evaluate(expr, aState);
+
+        // Secondly, the interval at the root is intersected with the condition for the test to be true, 
+        // in this case [−∞, 0], as the result of the expression should be negative.
+        AVT.data = this.SetOperators.intersection(AVT.data, this._IntervalFactory.getLessThanOrEqual(0));
+
+        // Thirdly, this information is propagated backwards, top-down towards the leaves,
+        const propagate = (node: BTree<Interval>): void => {
+            const BackwardOperators = {
+                leqZero: (x: Interval): Interval => {
+                    return this._IntervalFactory.intersect(x, this._IntervalFactory.getLessThanOrEqual(0));
+                },
+                minus: (x: Interval, y: Interval): Interval => {
+                    return this._IntervalFactory.intersect(x, this.BinaryOperators.minus(y));
+                },
+                add: (x: Interval, y: Interval, r: Interval) => {
+                    return {
+                        x: this._IntervalFactory.intersect(x, (this.BinaryOperators.subtract(r, y))),
+                        y: this._IntervalFactory.intersect(y, (this.BinaryOperators.subtract(r, x))),
+                    };
+                },
+                subtract: (x: Interval, y: Interval, r: Interval) => {
+                    return {
+                        x: this._IntervalFactory.intersect(x, (this.BinaryOperators.add(r, y))),
+                        y: this._IntervalFactory.intersect(y, (this.BinaryOperators.subtract(x, r))),
+                    };
+                },
+                multiply: (x: Interval, y: Interval, r: Interval) => {
+                    return {
+                        x: this._IntervalFactory.intersect(x, (this.BinaryOperators.divide(r, y))),
+                        y: this._IntervalFactory.intersect(y, (this.BinaryOperators.divide(r, x))),
+                    };
+                },
+                divide: (x: Interval, y: Interval, r: Interval) => {
+                    return {
+                        x: this._IntervalFactory.intersect(x, (this.BinaryOperators.multiply(r, y))),
+                        y: this._IntervalFactory.intersect(
+                            y,
+                            this._IntervalFactory.union(
+                                this.BinaryOperators.divide(r, this.BinaryOperators.add(r, this._IntervalFactory.new(-1, 1))),
+                                this._IntervalFactory.new(0, 0)
+                            )
+                        )
+                    };
+                }
+            };
+            if (node instanceof UNode)
+                node.child.data = BackwardOperators.minus(node.data, node.child.data)
+            if (node instanceof BNode) {
+
+                let aux;
+                switch (node.label) {
+                    case "+":
+                        aux = BackwardOperators.add(node.left.data, node.right.data, node.data);
+                        node.left.data = aux.x;
+                        node.left.data = aux.y;
+                        break;
+                    case "-":
+                        aux = BackwardOperators.subtract(node.left.data, node.right.data, node.data);
+                        node.left.data = aux.x;
+                        node.left.data = aux.y;
+                        break;
+                    case "*":
+                        aux = BackwardOperators.multiply(node.left.data, node.right.data, node.data);
+                        node.left.data = aux.x;
+                        node.left.data = aux.y;
+                        break;
+                    case "/":
+                        aux = BackwardOperators.divide(node.left.data, node.right.data, node.data);
+                        node.left.data = aux.x;
+                        node.left.data = aux.y;
+                        break;
+                }
+            }
+        }
+
+    }
 }

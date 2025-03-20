@@ -1,8 +1,9 @@
 import { Token } from "../token";
 
-export abstract class ArithmeticExpression { }
+export abstract class ArithmeticExpression {}
 
 export class ArithmeticBinaryOperator extends ArithmeticExpression {
+
   leftOperand: ArithmeticExpression;
   rightOperand: ArithmeticExpression;
   operator: Token;
@@ -23,7 +24,8 @@ export class ArithmeticBinaryOperator extends ArithmeticExpression {
   }
 }
 
-export class ArithmeticUnaryOperator extends ArithmeticExpression{
+export class ArithmeticUnaryOperator extends ArithmeticExpression {
+
   operand: ArithmeticExpression;
   operator: Token;
   constructor(

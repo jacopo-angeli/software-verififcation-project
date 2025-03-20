@@ -1,13 +1,11 @@
 import { StateAbstractDomain } from "../../../model/domains/state_abstract_domain";
-import { Interval } from "../types/interval";
+import { IntervalDomain } from "../../examples/IntervalDomain/Domains/interval_domain";
+import { Interval } from "../../examples/IntervalDomain/types/interval";
 import { IntervalAbstractProgramState } from "../types/state";
-import { IntervalDomain } from "./interval_domain";
 
 
 export class IntervalAbstractStateDomain extends StateAbstractDomain<Interval> {
-    constructor(
-        protected _IntervalDomain: IntervalDomain,
-    ) { super(); }
+    private _IntervalDomain = this._NumericalAbstractDomain as IntervalDomain;
     public equal(x: IntervalAbstractProgramState, y: IntervalAbstractProgramState): boolean {
         let xVar: Array<string> = x.variables();
         let yVar: Array<string> = y.variables();
@@ -37,7 +35,7 @@ export class IntervalAbstractStateDomain extends StateAbstractDomain<Interval> {
             states.forEach(state => {
                 if (state.has(key)) {
                     const interval = state.lookup(key);
-                    lub = lub === null ? interval : this._IntervalDomain.lub(lub, interval);
+                    lub = lub === null ? interval : this._IntervalDomain.SetOperators.union(lub, interval);
                 }
             });
             if (lub !== null) {
@@ -67,7 +65,7 @@ export class IntervalAbstractStateDomain extends StateAbstractDomain<Interval> {
             states.forEach(state => {
                 if (state.has(key)) {
                     const interval = state.lookup(key) as Interval;
-                    glb = glb === null ? interval : this._IntervalDomain.glb(glb, interval);
+                    glb = glb === null ? interval : this._IntervalDomain.SetOperators.intersection(glb, interval);
                 }
             });
             if (glb !== null) {

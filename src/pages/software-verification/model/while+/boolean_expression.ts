@@ -8,14 +8,14 @@ export abstract class BooleanExpression {
 export class BooleanBinaryOperator extends BooleanExpression {
 
   constructor(
-    private leftOperand: ArithmeticExpression,
-    private rightOperand: ArithmeticExpression,
-    private operator: Token,
+    public leftOperand: ArithmeticExpression,
+    public rightOperand: ArithmeticExpression,
+    public operator: Token,
   ) {
     super();
   };
 
-  canonicalForm(): BooleanExpression {
+  canonicalForm(): BooleanBinaryOperator | BooleanConcatenation {
     switch (this.operator.type) {
       case TokenType.LESSEQ:
         return new BooleanBinaryOperator(
@@ -38,33 +38,77 @@ export class BooleanBinaryOperator extends BooleanExpression {
           new Token(TokenType.LESSEQ, "<=")
         );
       case TokenType.MORE:
-        this.leftOperand = new ArithmeticBinaryOperator(
+        return new BooleanBinaryOperator(
           new ArithmeticBinaryOperator(
-            rightOperand, leftOperand, new Token(TokenType.MINUS, "-")
+            new ArithmeticBinaryOperator(
+              this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")
+            ),
+            new Numeral(1),
+            new Token(TokenType.MINUS, "+")
           ),
-          new Numeral(1),
-          new Token(TokenType.MINUS, "+")
+          new Numeral(0),
+          new Token(TokenType.LESSEQ, "<=")
         );
-        this.operator = new Token(TokenType.LESSEQ, "<=");
-        break;
       case TokenType.MOREEQ:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          rightOperand, leftOperand, new Token(TokenType.MINUS, "-")
+        return new BooleanBinaryOperator(
+          new ArithmeticBinaryOperator(
+            this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")
+          ),
+          new Numeral(0),
+          new Token(TokenType.LESSEQ, "<=")
         );
-        this.operator = new Token(TokenType.LESSEQ, "<=");
-        break;
       case TokenType.EQ:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          leftOperand, rightOperand, new Token(TokenType.MINUS, "-")
-        );
-        this.operator = operator;
-        break;
+        return new BooleanConcatenation(
+          new BooleanBinaryOperator(
+            new ArithmeticBinaryOperator(
+              this.leftOperand, this.rightOperand, new Token(TokenType.MINUS, "-")
+            ),
+            new Numeral(0),
+            new Token(TokenType.LESSEQ, "<=")
+          ),
+          new BooleanBinaryOperator(
+            new ArithmeticBinaryOperator(
+              this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")
+            ),
+            new Numeral(0),
+            new Token(TokenType.LESSEQ, "<=")
+          ),
+          new Token(TokenType.AND, "&&")
+        )
       case TokenType.INEQ:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          leftOperand, rightOperand, new Token(TokenType.MINUS, "-")
-        );
-        this.operator = operator;
-        break;
+        return new BooleanConcatenation(
+          new BooleanBinaryOperator(
+            new ArithmeticBinaryOperator(
+              new ArithmeticBinaryOperator(
+                new ArithmeticBinaryOperator(
+                  this.leftOperand, this.rightOperand, new Token(TokenType.MINUS, "-")
+                ),
+                new Numeral(1),
+                new Token(TokenType.MORE, "+",)
+              ),
+              new Numeral(0),
+              new Token(TokenType.LESSEQ, "<=",)
+            ),
+            new Numeral(0),
+            new Token(TokenType.LESSEQ, "<=")
+          ),
+          new BooleanBinaryOperator(
+            new ArithmeticBinaryOperator(
+              new ArithmeticBinaryOperator(
+                new ArithmeticBinaryOperator(
+                  this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")
+                ),
+                new Numeral(1),
+                new Token(TokenType.MORE, "+",)
+              ),
+              new Numeral(0),
+              new Token(TokenType.LESSEQ, "<=",)
+            ),
+            new Numeral(1),
+            new Token(TokenType.PLUS, "+")
+          ),
+          new Token(TokenType.AND, "||")
+        )
       default:
         throw Error("Boolean binary operator constructor: impossible build.")
     }

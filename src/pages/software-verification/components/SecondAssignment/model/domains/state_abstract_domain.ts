@@ -4,7 +4,7 @@ import { NumericalAbstractDomain } from "./numerical_abstract_domain";
 
 export class StateAbstractDomain<T extends AbstractValue> {
 
-    constructor(private _NumericalAbstractDomain: NumericalAbstractDomain<T>) { }
+    constructor(protected _NumericalAbstractDomain: NumericalAbstractDomain<T>) { }
 
     public leq(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): boolean {
         // * A possible improvement could be defining a sort of global instance V   *
