@@ -1,4 +1,4 @@
-import { PowerSet_I } from "../../../../model/types/power_set";
+import { PowerSet_I } from "../../../../model/types/concrete_value";
 import { Interval } from "./interval";
 import { Set } from "./set";
 
