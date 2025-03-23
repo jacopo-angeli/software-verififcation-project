@@ -1,14 +1,19 @@
-import { PowerSet_I } from "../../../../model/types/concrete_value";
 import { Interval } from "./interval";
 import { Set } from "./set";
 
 export class IntervalFactory {
+    public get meta(): { m: number; n: number; } {
+        return this._meta;
+    }
+    public set meta(value: { m: number; n: number; }) {
+        this._meta = value;
+    }
     /*-----------------------------------------------------------
     To keep interval operation 
     -----------------------------------------------------------*/
 
     constructor(
-        private _meta: { m: number, n: number },
+        private _meta: { m: number; n: number; },
     ) { }
 
     public new(l: number, u: number): Interval {

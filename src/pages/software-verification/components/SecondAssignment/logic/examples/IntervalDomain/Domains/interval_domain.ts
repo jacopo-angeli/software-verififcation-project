@@ -3,10 +3,9 @@ import { IntervalFactory } from "../types/interval_factory";
 import { Bottom, Interval } from "../types/interval";
 import { EmptySet, Set } from "../types/set";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Numeral, Variable } from "../../../../../../model/while+/arithmetic_expression";
-import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator } from "../../../../../../model/while+/boolean_expression";
-import { Statement } from "../../../../../../model/while+/statement";
 import { AbstractProgramState } from "../../../../model/types/abstract_state";
 import { ConcreteValue } from "../../../../model/types/concrete_value";
+import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../../../../model/while+/statement";
 
 export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
     constructor(
@@ -108,7 +107,12 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         },
     };
     widening = (x: Interval, y: Interval, options?: { tresholds?: Array<number>; }): Interval => {
-        return x
+        if (x instanceof Bottom) return y;
+        if (y instanceof Bottom) return x;
+        const newLower = (x.lower <= y.lower) ? x.lower : Math.max(...(this.thresholds!.filter(x => x <= y.lower)), this._IntervalFactory.meta.m);
+        const newUpper = (x.upper >= y.upper) ? x.upper : Math.min(...(this.thresholds!.filter(x => x >= y.upper)), this._IntervalFactory.meta.n);
+        let ret = this._IntervalFactory.new(newLower, newUpper);
+        return ret;
     };
     narrowing = (x: Interval, y: Interval, options?: { tresholds?: Array<number>; }): Interval => {
         return x
@@ -158,191 +162,151 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             value: super.E(expr, aState)
         }
     }
-    S = (expr: Statement, aState: AbstractProgramState<Interval>): any => {
-        //     private thresholdsHunt(current: any): Array<number> {
-//         let thresholds: Array<number> = [];
-//         if (current instanceof ArithmeticExpression) {
-//             if (current instanceof Numeral) {
-//                 thresholds.push(current.value);
-//                 return thresholds;
-//             }
-//             if (current instanceof ArithmeticBinaryOperator) {
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.leftOperand));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.rightOperand));
-//             }
-//             if (current instanceof ArithmeticUnaryOperator)
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.operand));
-//         } else if (current instanceof BooleanExpression) {
-//             if (current instanceof BooleanBinaryOperator || current instanceof BooleanConcatenation) {
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.leftOperand));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.rightOperand));
-//             }
-//             if (current instanceof BooleanUnaryOperator)
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.booleanExpression));
-//         }
-//         else {
-//             //Arithmetic Expressions
-//             //Statements
-//             if (current instanceof Assignment) thresholds = this.thresholdsHunt(current.value);
+    private thresholds: Array<number> | undefined = undefined;
+    S = (stmt: Statement<Interval>, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
+        let Body = (stmt: Statement<Interval>, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
 
-//             if (current instanceof Concatenation) {
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.firstStatement));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.secondStatement));
-//             }
-//             if (current instanceof IfThenElse) {
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.guard));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.thenBranch));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.elseBranch));
-//             }
-//             if (current instanceof Loop) {
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.guard));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.body));
-//             }
-//             if (current instanceof ForLoop) {
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.initialStatement));
-//                 thresholds = thresholds.concat(this.thresholdsHunt(current.incrementStatement));
-//             }
-//         }
-//         return thresholds;
-//     }
-//     private thresholds: Array<number> | undefined = undefined;
+            if (stmt instanceof Assignment) {
+                stmt.setPreCondition(aState.clone());
+                let ret = (this.E(stmt.variable, aState.clone()).state.update(stmt.variable.name, this.E(stmt.value, aState).value));
+                stmt.setPostCondition(ret.clone());
+                return ret;
+            }
 
-//     public dSharp(stmt: Statement, aState: IntervalAbstractProgramState, flags: { widening: boolean, narrowing: boolean } = { widening: false, narrowing: false }): IntervalAbstractProgramState {
-//         if (this.thresholds === undefined)
-//             this.thresholds = ([this._IntervalFactory.getMin, this._IntervalFactory.getMax].concat(this.thresholdsHunt(stmt))).sort();
+            if (stmt instanceof Skip) {
+                stmt.setPreCondition(aState.clone());
+                stmt.setPostCondition(aState.clone());
+                return aState.clone();
+            }
 
-//         if (stmt instanceof Assignment) {
-//             stmt.setPreCondition(aState.copy());
-//             let ret = (this.aSharp(stmt.variable, aState.copy()).state.update(stmt.variable.name, this.aSharp(stmt.value, aState).value));
-//             stmt.setPostCondition(ret.copy());
-//             return ret;
-//         }
+            if (stmt instanceof Concatenation) {
+                stmt.setPreCondition(aState.clone());
+                let ret = this.S(stmt.secondStatement, this.S(stmt.firstStatement, aState.clone(), flags).clone(), flags);
+                stmt.setPostCondition(ret.clone());
+                return ret;
+            }
 
-//         if (stmt instanceof Skip) {
-//             stmt.setPreCondition(aState.copy());
-//             stmt.setPostCondition(aState.copy());
-//             return aState.copy();
-//         }
+            if (stmt instanceof IfThenElse) {
+                stmt.setPreCondition(aState.clone());
+                let ret = this._StateAbstractDomain.SetOperators.union(
+                    this.C(stmt.guard, this.S(stmt.thenBranch, aState.clone(), flags)),
+                    this.C(stmt.guard.negate(), this.S(stmt.elseBranch, aState.clone(), flags)),
+                )
+                stmt.setPostCondition(ret.clone());
+                return ret;
+            }
 
-//         if (stmt instanceof Concatenation) {
-//             stmt.setPreCondition(aState.copy());
-//             let ret = this.dSharp(stmt.secondStatement, this.dSharp(stmt.firstStatement, aState.copy()).copy());
-//             stmt.setPostCondition(ret.copy());
-//             return ret;
-//         }
+            if (stmt instanceof WhileLoop) {
+                let currentState: AbstractProgramState<Interval> = aState.clone();
+                let prevState: AbstractProgramState<Interval>;
+                stmt.setPreCondition(currentState.clone());
+                do {
+                    prevState = currentState.clone();
 
-//         if (stmt instanceof IfThenElse) {
-//             stmt.setPreCondition(aState.copy());
-//             let ret = this._AbstracStateDomain.lub(
-//                 this.bSharp(stmt.guard, this.dSharp(stmt.thenBranch, aState.copy())),
-//                 this.bSharp(stmt.guard, this.dSharp(stmt.elseBranch, aState.copy()), true),
-//             )
-//             stmt.setPostCondition(ret.copy());
-//             return ret;
-//         }
+                    //currentState = prevState LUB D#[body](B#[guard])
+                    currentState = this._StateAbstractDomain.SetOperators.union(
+                        prevState,
+                        this.S(stmt.body, this.C(stmt.guard, currentState), flags)
+                    );
 
-//         if (stmt instanceof WhileLoop) {
-//             let currentState: IntervalAbstractProgramState = aState.copy();
-//             let prevState: IntervalAbstractProgramState;
-//             stmt.setPreCondition(currentState.copy());
-//             do {
-//                 prevState = currentState.copy();
+                    if (flags.widening) currentState = this._StateAbstractDomain.widening(prevState, currentState);
 
-//                 //currentState = prevState LUB D#[body](B#[guard])
-//                 currentState = this._AbstracStateDomain.lub(
-//                     prevState,
-//                     this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState), flags)
-//                 );
+                } while (!this._StateAbstractDomain.eq(prevState, currentState));
 
-//                 if (flags.widening) currentState = this._AbstracStateDomain.widening(prevState, currentState);
+                stmt.setInvariant(currentState);
 
-//             } while (!this._AbstracStateDomain.equal(prevState, currentState));
-//             stmt.setInvariant(currentState);
+                if (flags.narrowing) {
+                    prevState = aState.clone();
+                    do {
+                        currentState = this._StateAbstractDomain.narrowing(
+                            currentState,
+                            this._StateAbstractDomain.SetOperators.union(
+                                prevState,
+                                this.S(stmt.body, this.C(stmt.guard, currentState), flags)
+                            )
+                        );
+                        prevState = currentState.clone();
+                    } while (!this._StateAbstractDomain.eq(prevState, currentState));
+                }
+                let ret = this.C(stmt.guard.negate(), currentState);
+                stmt.setPostCondition(ret);
+                return ret;
+            }
 
-//             if (flags.narrowing) {
-//                 prevState = aState.copy();
-//                 do {
-//                     currentState = this._AbstracStateDomain.narrowing(
-//                         currentState,
-//                         this._AbstracStateDomain.lub(
-//                             prevState,
-//                             this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState))
-//                         )
-//                     );
-//                     prevState = currentState.copy();
-//                 } while (!this._AbstracStateDomain.equal(prevState, currentState));
-//             }
-//             let ret = this.bSharp(stmt.guard, currentState, true);
-//             stmt.setPostCondition(ret);
-//             return ret;
-//         }
+            if (stmt instanceof RepeatUntilLoop) {
+                // B#[b](lfp(λx.s# ∨ S​(D#[S]∘B#[not b])x)) ∘ D#[S]s
+                let currentState: AbstractProgramState<Interval> = this.S(stmt.body, aState.clone(), flags);
+                let prevState: AbstractProgramState<Interval>;
+                stmt.setPreCondition(aState.clone())
+                do {
+                    prevState = currentState.clone();
+                    currentState = this._StateAbstractDomain.SetOperators.union(
+                        prevState,
+                        this.S(stmt.body, this.C(stmt.guard.negate(), prevState), flags)
+                    );
+                    if (flags.widening) currentState = this._StateAbstractDomain.widening(prevState, currentState);
+                } while (!this._StateAbstractDomain.eq(prevState, currentState));
+                stmt.setInvariant(currentState.clone());
 
-//         if (stmt instanceof RepeatUntilLoop) {
-//             // B#[b](lfp(λx.s# ∨ S​(D#[S]∘B#[not b])x)) ∘ D#[S]s
-//             let currentState: IntervalAbstractProgramState = this.dSharp(stmt.body, aState.copy());
-//             let prevState: IntervalAbstractProgramState;
-//             stmt.setPreCondition(aState.copy())
-//             do {
-//                 prevState = currentState.copy();
-//                 currentState = this._AbstracStateDomain.lub(
-//                     prevState,
-//                     this.dSharp(stmt.body, this.bSharp(stmt.guard, prevState, true))
-//                 );
-//                 if (flags.widening) currentState = this._AbstracStateDomain.widening(prevState, currentState);
-//             } while (!this._AbstracStateDomain.equal(prevState, currentState));
-//             stmt.setInvariant(currentState.copy());
+                if (flags.narrowing) {
+                    prevState = aState.clone();
+                    do {
+                        currentState = this._StateAbstractDomain.narrowing(
+                            currentState,
+                            this._StateAbstractDomain.SetOperators.union(
+                                prevState,
+                                this.S(stmt.body, this.C(stmt.guard.negate(), currentState), flags)
+                            )
+                        );
+                        prevState = currentState.clone();
+                    } while (!this._StateAbstractDomain.eq(prevState, currentState));
+                }
+                let ret = this.C(stmt.guard, currentState);
+                stmt.setPostCondition(ret.clone());
+                return ret;
+            }
 
-//             if (flags.narrowing) {
-//                 prevState = aState.copy();
-//                 do {
-//                     currentState = this._AbstracStateDomain.narrowing(
-//                         currentState,
-//                         this._AbstracStateDomain.lub(
-//                             prevState,
-//                             this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState, true))
-//                         )
-//                     );
-//                     prevState = currentState.copy();
-//                 } while (!this._AbstracStateDomain.equal(prevState, currentState));
-//             }
-//             let ret = this.bSharp(stmt.guard, currentState);
-//             stmt.setPostCondition(ret.copy());
-//             return ret;
-//         }
+            if (stmt instanceof ForLoop) {
+                // Initialization: Execute S
+                let currentState: AbstractProgramState<Interval> = this.S(stmt.initialStatement, aState, flags);
+                let prevState: AbstractProgramState<Interval>;
+                stmt.setPreCondition(aState.clone());
+                do {
+                    prevState = currentState;
+                    currentState = this._StateAbstractDomain.SetOperators.union(
+                        prevState,
+                        this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, prevState), flags), flags)
+                    );
+                    if (flags.narrowing) currentState = this._StateAbstractDomain.widening(prevState, currentState);
+                } while (!this._StateAbstractDomain.eq(prevState, currentState));
+                stmt.setInvariant(currentState.clone());
+                if (flags.narrowing) {
+                    prevState = aState.clone();
+                    do {
+                        currentState = this._StateAbstractDomain.narrowing(
+                            currentState,
+                            this._StateAbstractDomain.SetOperators.union(
+                                prevState,
+                                this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, currentState), flags), flags)
+                            )
+                        );
+                        prevState = currentState.clone();
+                    } while (!this._StateAbstractDomain.eq(prevState, currentState));
+                }
+                let ret = this.C(stmt.guard.negate(), currentState);
+                stmt.setPostCondition(ret.clone());
+                return ret;
+            }
 
-//         if (stmt instanceof ForLoop) {
-//             // Initialization: Execute S
-//             let currentState: IntervalAbstractProgramState = this.dSharp(stmt.initialStatement, aState);
-//             let prevState: IntervalAbstractProgramState;
-//             stmt.setPreCondition(aState.copy());
-//             do {
-//                 prevState = currentState;
-//                 currentState = this._AbstracStateDomain.lub(
-//                     prevState,
-//                     this.dSharp(stmt.incrementStatement, this.dSharp(stmt.body, this.bSharp(stmt.guard, prevState)))
-//                 );
-//                 if (flags.narrowing) currentState = this._AbstracStateDomain.widening(prevState, currentState);
-//             } while (!this._AbstracStateDomain.equal(prevState, currentState));
-//             stmt.setInvariant(currentState.copy());
-//             if (flags.narrowing) {
-//                 prevState = aState.copy();
-//                 do {
-//                     currentState = this._AbstracStateDomain.narrowing(
-//                         currentState,
-//                         this._AbstracStateDomain.lub(
-//                             prevState,
-//                             this.dSharp(stmt.incrementStatement, this.dSharp(stmt.body, this.bSharp(stmt.guard, currentState)))
-//                         )
-//                     );
-//                     prevState = currentState.copy();
-//                 } while (!this._AbstracStateDomain.equal(prevState, currentState));
-//             }
-//             let ret = this.bSharp(stmt.guard, currentState, true);
-//             stmt.setPostCondition(ret.copy());
-//             return ret;
-//         }
+            throw Error("Dshapr : Unknown Statement.");
+        };
 
-//         throw Error("Dshapr : Unknown Statement.");
-//     }
-    };
-}
+
+        // INIT
+        if (this.thresholds === undefined) {
+            this.thresholds = [this._IntervalFactory.meta.m, this._IntervalFactory.meta.n]
+            stmt.iter((node)=>{if(node instanceof Numeral) this.thresholds?.push(node.value)})
+        }
+        return Body(stmt, aState, flags);
+    }
+};

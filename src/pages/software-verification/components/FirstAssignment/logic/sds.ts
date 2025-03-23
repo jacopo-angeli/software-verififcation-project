@@ -1,10 +1,11 @@
 
 import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../model/while+/statement";
+import { AbstractValue } from "../../SecondAssignment/model/types/abstract_value";
 import { ProgramState } from "../model/program_state";
 import A from "./a";
 import B from "./b";
 class Sds {
-    static eval(stmt: Statement, state: ProgramState, iterationLimit: number): ProgramState {
+    static eval<T extends AbstractValue>(stmt: Statement<T>, state: ProgramState, iterationLimit: number): ProgramState {
 
         if (stmt instanceof Assignment) {
             return (A.eval(stmt.value, state).state).copyWith(stmt.variable.name, A.eval(stmt.value, state).value);

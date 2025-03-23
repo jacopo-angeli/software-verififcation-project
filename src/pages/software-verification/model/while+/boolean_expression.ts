@@ -14,6 +14,18 @@ export abstract class BooleanExpression {
    * Converts the boolean expression to its canonical form.
    */
   abstract canonicalForm(): BooleanExpression;
+
+  /**
+   * Recursively applies a transformation function to all subexpressions.
+   * @param fn The transformation function.
+   */
+  abstract map(fn: (expr: BooleanExpression) => BooleanExpression): BooleanExpression;
+
+  /**
+   * Recursively applies an iteration function to all subexpressions.
+   * @param fn The iteration function.
+   */
+  abstract iter(fn: (expr: BooleanExpression) => void): void;
 }
 
 /**
@@ -115,6 +127,18 @@ export class BooleanBinaryOperator extends BooleanExpression {
   toString(): string {
     return `${this.leftOperand.toString()} ${this.operator.value} ${this.rightOperand.toString()}`;
   }
+
+  map(fn: (expr: BooleanExpression) => BooleanExpression): BooleanExpression {
+    return fn(
+      new BooleanBinaryOperator(this.leftOperand, this.rightOperand, this.operator)
+    );
+  }
+
+  iter(fn: (expr: BooleanExpression) => void): void {
+    fn(this);
+    this.leftOperand instanceof BooleanExpression && this.leftOperand.iter(fn);
+    this.rightOperand instanceof BooleanExpression && this.rightOperand.iter(fn);
+  }
 }
 
 /**
@@ -147,6 +171,18 @@ export class BooleanConcatenation extends BooleanExpression {
   canonicalForm(): BooleanExpression {
     return new BooleanConcatenation(this.leftOperand.canonicalForm(), this.rightOperand.canonicalForm(), this.operator);
   }
+
+  map(fn: (expr: BooleanExpression) => BooleanExpression): BooleanExpression {
+    return fn(
+      new BooleanConcatenation(this.leftOperand.map(fn), this.rightOperand.map(fn), this.operator)
+    );
+  }
+
+  iter(fn: (expr: BooleanExpression) => void): void {
+    fn(this);
+    this.leftOperand.iter(fn);
+    this.rightOperand.iter(fn);
+  }
 }
 
 /**
@@ -168,6 +204,15 @@ export class BooleanUnaryOperator extends BooleanExpression {
   canonicalForm(): BooleanExpression {
     return new BooleanUnaryOperator(this.booleanExpression.canonicalForm(), this.operator);
   }
+
+  map(fn: (expr: BooleanExpression) => BooleanExpression): BooleanExpression {
+    return fn(new BooleanUnaryOperator(this.booleanExpression.map(fn), this.operator));
+  }
+
+  iter(fn: (expr: BooleanExpression) => void): void {
+    fn(this);
+    this.booleanExpression.iter(fn);
+  }
 }
 
 /**
@@ -184,5 +229,13 @@ export class Boolean extends BooleanExpression {
 
   canonicalForm(): BooleanExpression {
     return new Boolean(this.value);
+  }
+
+  map(fn: (expr: BooleanExpression) => BooleanExpression): BooleanExpression {
+    return fn(new Boolean(this.value));
+  }
+
+  iter(fn: (expr: BooleanExpression) => void): void {
+    fn(this);
   }
 }

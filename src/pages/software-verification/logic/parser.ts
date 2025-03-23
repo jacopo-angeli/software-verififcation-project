@@ -6,7 +6,8 @@ import { ProgramState } from "../components/FirstAssignment/model/program_state"
 import { InitialStateFormatError, ProgramFormatError } from "../model/errors";
 import { IntervalFactory } from "../components/SecondAssignment/logic/examples/IntervalDomain/types/interval_factory";
 import { IntervalAbstractProgramState } from "../components/SecondAssignment/logic/IntervalDomain/types/state";
-import { Interval } from "../components/SecondAssignment/logic/IntervalDomain/types/interval";
+import { AbstractValue } from "../components/SecondAssignment/model/types/abstract_value";
+import { Interval } from "../components/SecondAssignment/logic/examples/IntervalDomain/types/interval";
 export class Parser {
 
     private static parseBool(i: string): boolean {
@@ -308,7 +309,7 @@ export class Parser {
         }
     }
 
-    private static parseStatement(tokens: Array<any>, offset: number = 0) {
+    private static parseStatement<T extends AbstractValue>(tokens: Array<any>, offset: number = 0) {
         let pc: number = 0;
         for (let i: number = offset; i < tokens.length && pc >= 0; i++) {
             if (tokens[i] instanceof Token) {
@@ -320,20 +321,20 @@ export class Parser {
                     this.parseStatement(tokens, i + 6);
                     this.parseStatement(tokens, i + 10);
                     let guard: BooleanExpression = tokens[i + 2] as BooleanExpression;
-                    let t = tokens[i + 6] as Statement;
-                    let e = tokens[i + 10] as Statement;
+                    let t = tokens[i + 6] as Statement<T>;
+                    let e = tokens[i + 10] as Statement<T>;
                     tokens[i] = new IfThenElse(guard, t, e);
                     tokens.splice(i + 1, 12);
                 }
                 else if (t.type === TokenType.CONC) {
-                    let first = tokens[i - 1] as Statement;
+                    let first = tokens[i - 1] as Statement<T>;
                     if (!(tokens[i + 1] instanceof Statement)) {
                         if (tokens[i + 1].type === TokenType.KET) {
                             throw new ProgramFormatError(`Error on token ${i} : ${tokens[i].value}`);
                         }
                         this.parseStatement(tokens, i + 1);
                     }
-                    let second = tokens[i + 1] as Statement;
+                    let second = tokens[i + 1] as Statement<T>;
                     tokens[i] = new Concatenation(first, second);
                     tokens.splice(i + 1, 1);
                     tokens.splice(i - 1, 1);
@@ -350,7 +351,7 @@ export class Parser {
                 else if (t.type === TokenType.REPEAT) {
                     // REPEAT - BRA - Stmt - KET - UNTIL - bra - Bexp - ket
                     this.parseStatement(tokens, i + 2);
-                    let body = tokens[i + 2] as Statement;
+                    let body = tokens[i + 2] as Statement<T>;
                     let guard = tokens[i + 6] as BooleanExpression;
                     tokens[i] = new RepeatUntilLoop(body, guard);
                     tokens.splice(i + 1, 7);
@@ -358,10 +359,10 @@ export class Parser {
                 else if (t.type === TokenType.FOR) {
                     // FOR - bra - SStmt - CONC - Bexp - CONC - SStmt - ket - BRA - Stmt - KET 
                     this.parseStatement(tokens, i + 9);
-                    let body = tokens[i + 9] as Statement;
+                    let body = tokens[i + 9] as Statement<T>;
                     let guard = tokens[i + 4] as BooleanExpression;
-                    let initialStatement = tokens[i + 2] as Statement;
-                    let incrementStatement = tokens[i + 6] as Statement;
+                    let initialStatement = tokens[i + 2] as Statement<T>;
+                    let incrementStatement = tokens[i + 6] as Statement<T>;
                     tokens[i] = new ForLoop(body, guard, initialStatement, incrementStatement);
                     tokens.splice(i + 1, 10);
                 }
@@ -370,7 +371,7 @@ export class Parser {
         }
     }
 
-    static parse(input: Array<Token>): Statement {
+    static parse<T extends AbstractValue>(input: Array<Token>): Statement<T> {
         var tokens: Array<any> = Parser.parseAtomic(input);
         this.parseExpression(tokens);
         this.parseAssignment(tokens);
@@ -489,8 +490,8 @@ export class Parser {
 
                 let varName: string = e[0].value;
 
-                let lower: number = intervalFactory.getMin;
-                let upper: number = intervalFactory.getMax;
+                let lower: number = intervalFactory.meta.m;
+                let upper: number = intervalFactory.meta.n;
                 if (e[2].type === TokenType.TOP) ret.set(varName, intervalFactory.Top);
                 else if (e[2].type === TokenType.BOTTOM) ret.set(varName, intervalFactory.Bottom);
                 else if (e[2].type === TokenType.BBOX) {
@@ -499,27 +500,27 @@ export class Parser {
                         // e[4] must be a comma
                         if (e[5].type === TokenType.NUM) upper = parseInt(e[5].value);
                         else if (e[5].type === TokenType.MINUS) {
-                            if (e[6].type === TokenType.INF) upper = e[5].value === "-" ? intervalFactory.getMin : intervalFactory.getMax;
+                            if (e[6].type === TokenType.INF) upper = e[5].value === "-" ? intervalFactory.meta.m : intervalFactory.meta.n;
                             if (e[6].type === TokenType.NUM) upper = parseInt(e[5].value + e[6].value);
                         }
                         else throw new InitialStateFormatError(`Format error on "${varName}" upper bound.`);
                     }
                     else if (e[3].type === TokenType.MINUS) {
-                        if (e[4].type === TokenType.INF) lower = e[3].value === "-" ? intervalFactory.getMin : intervalFactory.getMax;
+                        if (e[4].type === TokenType.INF) lower = e[3].value === "-" ? intervalFactory.meta.m : intervalFactory.meta.n;
                         else if (e[4].type === TokenType.NUM) lower = parseInt(e[3].value + e[4].value);
                         else throw new InitialStateFormatError(`Format error on "${varName}" lower bound.`);
 
                         // e[5] must be a comma
                         if (e[6].type === TokenType.NUM) upper = parseInt(e[6].value);
                         else if (e[6].type === TokenType.MINUS) {
-                            if (e[7].type === TokenType.INF) upper = e[6].value === "-" ? intervalFactory.getMin : intervalFactory.getMax;
+                            if (e[7].type === TokenType.INF) upper = e[6].value === "-" ? intervalFactory.meta.m : intervalFactory.meta.n;
                             if (e[7].type === TokenType.NUM) upper = parseInt(e[6].value + e[7].value);
                         }
                         else throw new InitialStateFormatError(`Format error on "${varName}" upper bound.`);
                     }
                     else throw new InitialStateFormatError(`Format error on "${varName}" lower bound.`);
 
-                    ret.set(varName, intervalFactory.getInterval(lower, upper));
+                    ret.set(varName, intervalFactory.new(lower, upper));
 
                 }
                 else throw new InitialStateFormatError(`Format error on variable "${varName}" value.`);

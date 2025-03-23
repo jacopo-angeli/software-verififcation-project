@@ -23,11 +23,21 @@ export class StateAbstractDomain<T extends AbstractValue> {
             );
     }
 
+    public eq(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): boolean {
+        return this.leq(X, Y) && this.leq(Y, X);
+    }
+
     public widening(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): AbstractProgramState<T> {
         if (X.isBottom()) return Y;
         if (Y.isBottom()) return X;
         return this.merge(X, Y, (x, y) => x && y ? this._NumericalAbstractDomain.widening(x, y) as T : (x ?? y)!);
     }
+
+    public narrowing(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): AbstractProgramState<T> {
+        if (X.isBottom()) return Y;
+        if (Y.isBottom()) return X;
+        return this.merge(X, Y, (x, y) => x && y ? this._NumericalAbstractDomain.widening(x, y) as T : (x ?? y)!);
+    }    
 
     public SetOperators = {
         union: (X: AbstractProgramState<T>, Y: AbstractProgramState<T>) => {

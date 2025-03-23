@@ -12,6 +12,7 @@ import { InitialStateFormatError } from "../../../model/errors";
 import Latex from "react-latex-next";
 import Sds from "../logic/sds";
 import prettyPrintStatement from "../../../logic/pretty_printer";
+import { AbstractValue } from "../../SecondAssignment/model/types/abstract_value";
 
 const FirstAssignment = () => {
 	var [initialState, setInitialState] = useState("");
@@ -23,7 +24,7 @@ const FirstAssignment = () => {
 
 	var [initialStateResult, setInitialStateResult] = useState(new ProgramState());
 	var [tokenList, setTokenList] = useState([] as Array<Token>);
-	var [programStatement, setProgramStatement] = useState(new Skip() as Statement);
+	var [programStatement, setProgramStatement] = useState(new Skip() as Statement<AbstractValue>);
 	var [evaluationResult, setEvaluationResult] = useState(new ProgramState());
 
 	const submit = (e: React.FormEvent<HTMLFormElement>) => {

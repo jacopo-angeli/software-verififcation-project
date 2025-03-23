@@ -1,5 +1,5 @@
 import { TokenType } from "../../../../model/token";
-import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Numeral, Variable } from "../../../../model/while+/arithmetic_expression";
+import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Variable } from "../../../../model/while+/arithmetic_expression";
 import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression } from "../../../../model/while+/boolean_expression";
 import { Statement } from "../../../../model/while+/statement";
 import { BinaryNode, BinaryTree, LeafNode, UnaryNode, VariableNode } from "../../logic/examples/IntervalDomain/types/b-tree";
@@ -9,7 +9,7 @@ import { ConcreteValue } from "../types/concrete_value";
 import { StateAbstractDomain } from "./state_abstract_domain";
 
 export abstract class NumericalAbstractDomain<T extends AbstractValue> {
-    private _StateAbstractDomain = new StateAbstractDomain<T>(this);
+    protected _StateAbstractDomain = new StateAbstractDomain<T>(this);
 
     abstract leq: (X: T, Y: T) => boolean;
     abstract gamma: (X: T) => ConcreteValue;
@@ -144,7 +144,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
 
         throw Error();
     };
-    public S(expr: Statement, aState: AbstractProgramState<T>): AbstractProgramState<T> {
+    public S(expr: Statement<T>, aState: AbstractProgramState<T>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<T> {
         let ret = aState.clone();
         ret.variables().forEach((v, i) => { ret.update(v, this.Top) });
         return ret;

@@ -22,8 +22,8 @@ export class AbstractProgramState<T extends AbstractValue> {
         return `{ ${this._state.keys().map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).toArray().join(", ")} }`;
     };
 
-    isBottom(): boolean { return this._state.keys().reduce((acc, k) => { return acc || (this._state.get(k) instanceof BottomValue)}, false); }
-    isTop(): boolean { return this._state.keys().reduce((acc, k) => { return acc && (this._state.get(k) instanceof TopValue) }, true); }
+    isBottom(): boolean { return this._state.keys().reduce((acc, k) => { return acc || (this._state.get(k as string) instanceof BottomValue)}, false); }
+    isTop(): boolean { return this._state.keys().reduce((acc, k) => { return acc && (this._state.get(k as string) instanceof TopValue) }, true); }
 
     
     variables(): Array<string> {
