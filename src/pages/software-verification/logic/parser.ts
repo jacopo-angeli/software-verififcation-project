@@ -5,9 +5,8 @@ import { Variable, ArithmeticBinaryOperator, ArithmeticUnaryOperator, Arithmetic
 import { ProgramState } from "../components/FirstAssignment/model/program_state";
 import { InitialStateFormatError, ProgramFormatError } from "../model/errors";
 import { IntervalFactory } from "../components/SecondAssignment/logic/examples/IntervalDomain/types/interval_factory";
-import { IntervalAbstractProgramState } from "../components/SecondAssignment/logic/IntervalDomain/types/state";
-import { AbstractValue } from "../components/SecondAssignment/model/types/abstract_value";
 import { Interval } from "../components/SecondAssignment/logic/examples/IntervalDomain/types/interval";
+import { AbstractProgramState } from "../components/SecondAssignment/model/types/abstract_state";
 export class Parser {
 
     private static parseBool(i: string): boolean {
@@ -309,7 +308,7 @@ export class Parser {
         }
     }
 
-    private static parseStatement<T extends AbstractValue>(tokens: Array<any>, offset: number = 0) {
+    private static parseStatement(tokens: Array<any>, offset: number = 0) {
         let pc: number = 0;
         for (let i: number = offset; i < tokens.length && pc >= 0; i++) {
             if (tokens[i] instanceof Token) {
@@ -321,20 +320,20 @@ export class Parser {
                     this.parseStatement(tokens, i + 6);
                     this.parseStatement(tokens, i + 10);
                     let guard: BooleanExpression = tokens[i + 2] as BooleanExpression;
-                    let t = tokens[i + 6] as Statement<T>;
-                    let e = tokens[i + 10] as Statement<T>;
+                    let t = tokens[i + 6] as Statement;
+                    let e = tokens[i + 10] as Statement;
                     tokens[i] = new IfThenElse(guard, t, e);
                     tokens.splice(i + 1, 12);
                 }
                 else if (t.type === TokenType.CONC) {
-                    let first = tokens[i - 1] as Statement<T>;
+                    let first = tokens[i - 1] as Statement;
                     if (!(tokens[i + 1] instanceof Statement)) {
                         if (tokens[i + 1].type === TokenType.KET) {
                             throw new ProgramFormatError(`Error on token ${i} : ${tokens[i].value}`);
                         }
                         this.parseStatement(tokens, i + 1);
                     }
-                    let second = tokens[i + 1] as Statement<T>;
+                    let second = tokens[i + 1] as Statement;
                     tokens[i] = new Concatenation(first, second);
                     tokens.splice(i + 1, 1);
                     tokens.splice(i - 1, 1);
@@ -351,7 +350,7 @@ export class Parser {
                 else if (t.type === TokenType.REPEAT) {
                     // REPEAT - BRA - Stmt - KET - UNTIL - bra - Bexp - ket
                     this.parseStatement(tokens, i + 2);
-                    let body = tokens[i + 2] as Statement<T>;
+                    let body = tokens[i + 2] as Statement;
                     let guard = tokens[i + 6] as BooleanExpression;
                     tokens[i] = new RepeatUntilLoop(body, guard);
                     tokens.splice(i + 1, 7);
@@ -359,10 +358,10 @@ export class Parser {
                 else if (t.type === TokenType.FOR) {
                     // FOR - bra - SStmt - CONC - Bexp - CONC - SStmt - ket - BRA - Stmt - KET 
                     this.parseStatement(tokens, i + 9);
-                    let body = tokens[i + 9] as Statement<T>;
+                    let body = tokens[i + 9] as Statement;
                     let guard = tokens[i + 4] as BooleanExpression;
-                    let initialStatement = tokens[i + 2] as Statement<T>;
-                    let incrementStatement = tokens[i + 6] as Statement<T>;
+                    let initialStatement = tokens[i + 2] as Statement;
+                    let incrementStatement = tokens[i + 6] as Statement;
                     tokens[i] = new ForLoop(body, guard, initialStatement, incrementStatement);
                     tokens.splice(i + 1, 10);
                 }
@@ -371,7 +370,7 @@ export class Parser {
         }
     }
 
-    static parse<T extends AbstractValue>(input: Array<Token>): Statement<T> {
+    static parse(input: Array<Token>): Statement{
         var tokens: Array<any> = Parser.parseAtomic(input);
         this.parseExpression(tokens);
         this.parseAssignment(tokens);
@@ -410,7 +409,7 @@ export class Parser {
         return res;
     }
 
-    static parseAbstractState(input: Array<Token>, intervalFactory: IntervalFactory): IntervalAbstractProgramState {
+    static parseAbstractState(input: Array<Token>, intervalFactory: IntervalFactory): AbstractProgramState<Interval>{
 
         class Node {
             constructor(
@@ -528,7 +527,8 @@ export class Parser {
                 throw new InitialStateFormatError(`Format error. Check the grammar above.`)
             }
         })
-        return new IntervalAbstractProgramState(ret);
+        console.log(ret);
+        return new AbstractProgramState<Interval>(ret);
     }
 
 }

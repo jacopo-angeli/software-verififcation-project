@@ -1,61 +1,74 @@
-import { AbstractProgramState } from "../../components/SecondAssignment/model/types/abstract_state";
-import { AbstractValue } from "../../components/SecondAssignment/model/types/abstract_value";
 import { ArithmeticExpression, Variable } from "./arithmetic_expression";
 import { BooleanExpression } from "./boolean_expression";
 
-// Modify the Statement class to include the iter method that works for both expression types.
-export abstract class Statement<T extends AbstractValue> {
-  preCondition: AbstractProgramState<T> | undefined;
-  postCondition: AbstractProgramState<T> | undefined;
+export abstract class Statement {
+  preCondition: string | undefined;
+  postCondition: string | undefined;
 
-  public setPreCondition(c: AbstractProgramState<T>) { this.preCondition = c; }
-  public setPostCondition(c: AbstractProgramState<T>) { this.postCondition = c; }
+  public setPreCondition(c: string) { this.preCondition = c; }
+  public setPostCondition(c: string) { this.postCondition = c; }
 
-  // Abstract iter method to be overridden in subclasses
-  abstract iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void;
+  protected static indent(level: number): string {
+    return ' '.repeat(level * 2);
+  }
+  public abstract annotatedProgram(level: number): string;
+
+  abstract iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void;
 }
 
-export class Assignment<T extends AbstractValue> extends Statement<T> {
+export class Assignment extends Statement {
+  public annotatedProgram(level: number): string {
+    return `${Statement.indent(level)}${this.preCondition}\n${Statement.indent(level)}${this.variable.name}=${this.value.toString()};\n${Statement.indent(level)}${this.postCondition}\n`;
+  }
   constructor(public variable: Variable, public value: ArithmeticExpression) {
     super();
   }
 
   // Apply the function to this statement and its components
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void {
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.variable.iter(fn);
     this.value.iter(fn);
   }
 }
 
-export class Skip<T extends AbstractValue> extends Statement<T> {
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void  {
+export class Skip extends Statement {
+  public annotatedProgram(level: number = 0): string {
+    return `${Statement.indent(level)}skip;\n`;
+  }
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
   }
 }
 
-export class Concatenation<T extends AbstractValue> extends Statement<T> {
-  constructor(public firstStatement: Statement<T>, public secondStatement: Statement<T>) {
+export class Concatenation extends Statement {
+  public annotatedProgram(level: number): string {
+    return `${this.firstStatement.annotatedProgram(level)};${this.secondStatement.annotatedProgram(level)};`;
+  }
+  constructor(public firstStatement: Statement, public secondStatement: Statement) {
     super();
   }
 
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void  {
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.firstStatement.iter(fn);
     this.secondStatement.iter(fn);
   }
 }
 
-export class IfThenElse<T extends AbstractValue> extends Statement<T> {
+export class IfThenElse extends Statement {
+  public annotatedProgram(level: number): string {
+    return `${Statement.indent(level)}${this.preCondition}\nif(${this.guard.toString()})then{\n${this.thenBranch.annotatedProgram(level + 1)}\n${Statement.indent(level)}} else {${this.elseBranch.annotatedProgram(level + 1)}\n${Statement.indent(level)}}${Statement.indent(level)}${this.postCondition}\n`;
+  }
   constructor(
     public guard: BooleanExpression,
-    public thenBranch: Statement<T>,
-    public elseBranch: Statement<T>
+    public thenBranch: Statement,
+    public elseBranch: Statement
   ) {
     super();
   }
 
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void  {
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.guard.iter(fn); // Call iter on the guard (BooleanExpression)
     this.thenBranch.iter(fn);
@@ -63,48 +76,57 @@ export class IfThenElse<T extends AbstractValue> extends Statement<T> {
   }
 }
 
-export abstract class Loop<T extends AbstractValue> extends Statement<T> {
-  invariant: AbstractProgramState<T> | undefined;
-  constructor(public body: Statement<T>, public guard: BooleanExpression) {
+export abstract class Loop extends Statement {
+  invariant: string | undefined;
+  constructor(public body: Statement, public guard: BooleanExpression) {
     super();
   }
-  public setInvariant(c: AbstractProgramState<T>) { this.invariant = c; }
+  public setInvariant(c: string) { this.invariant = c; }
 
   // Body iter function
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void  {
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.guard.iter(fn); // Call iter on the guard (BooleanExpression)
     this.body.iter(fn);
   }
 }
 
-export class WhileLoop<T extends AbstractValue> extends Loop<T> {
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void  {
+export class WhileLoop extends Loop {
+  public annotatedProgram(level: number): string {
+    return `${Statement.indent(level)}${this.preCondition}\nwhile(${this.guard.toString()}){\n${Statement.indent(level)}${this.body.annotatedProgram(level+1)}\n${Statement.indent(level)}} \n${Statement.indent(level)}${this.postCondition}\n`;
+  }
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.guard.iter(fn); // Call iter on the guard (BooleanExpression)
     this.body.iter(fn);
   }
 }
 
-export class RepeatUntilLoop<T extends AbstractValue> extends Loop<T> {
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void  {
+export class RepeatUntilLoop extends Loop {
+  public annotatedProgram(level: number): string {
+    return `${Statement.indent(level)}${this.preCondition}\nrepeat{\n${Statement.indent(level)}${this.body.annotatedProgram(level+1)}\n${Statement.indent(level)}}until(${this.guard.toString()})\n${Statement.indent(level)}${this.postCondition}\n`;
+  }
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.guard.iter(fn); // Call iter on the guard (BooleanExpression)
     this.body.iter(fn);
   }
 }
 
-export class ForLoop<T extends AbstractValue> extends Loop<T> {
+export class ForLoop extends Loop {
+  public annotatedProgram(level: number): string {
+    return `${Statement.indent(level)}${this.preCondition}\n for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${this.body.annotatedProgram(level+1)}\n${Statement.indent(level)} \n${Statement.indent(level)}${this.postCondition}\n`;
+  }
   constructor(
-    body: Statement<T>,
+    body: Statement,
     guard: BooleanExpression,
-    public initialStatement: Statement<T>,
-    public incrementStatement: Statement<T>
+    public initialStatement: Statement,
+    public incrementStatement: Statement
   ) {
     super(body, guard);
   }
 
-  iter(fn: (node: Statement<T> | ArithmeticExpression | BooleanExpression) => void) : void {
+  iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
     this.initialStatement.iter(fn);
     this.guard.iter(fn); // Call iter on the guard (BooleanExpression)

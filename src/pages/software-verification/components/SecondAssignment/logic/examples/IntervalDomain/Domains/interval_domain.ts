@@ -36,7 +36,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         },
         subtract: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
-            return this._IntervalFactory.new(x.lower + y.upper, x.upper + y.lower)
+            return this._IntervalFactory.new(x.lower - y.upper, x.upper - y.lower)
         },
         multiply: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
@@ -163,43 +163,43 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         }
     }
     private thresholds: Array<number> | undefined = undefined;
-    S = (stmt: Statement<Interval>, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
-        let Body = (stmt: Statement<Interval>, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
+    S = (stmt: Statement, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
+        let Body = (stmt: Statement, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
 
             if (stmt instanceof Assignment) {
-                stmt.setPreCondition(aState.clone());
+                stmt.setPreCondition(aState.toString());
                 let ret = (this.E(stmt.variable, aState.clone()).state.update(stmt.variable.name, this.E(stmt.value, aState).value));
-                stmt.setPostCondition(ret.clone());
+                stmt.setPostCondition(ret.toString());
                 return ret;
             }
 
             if (stmt instanceof Skip) {
-                stmt.setPreCondition(aState.clone());
-                stmt.setPostCondition(aState.clone());
+                stmt.setPreCondition(aState.toString());
+                stmt.setPostCondition(aState.toString());
                 return aState.clone();
             }
 
             if (stmt instanceof Concatenation) {
-                stmt.setPreCondition(aState.clone());
+                stmt.setPreCondition(aState.toString());
                 let ret = this.S(stmt.secondStatement, this.S(stmt.firstStatement, aState.clone(), flags).clone(), flags);
-                stmt.setPostCondition(ret.clone());
+                stmt.setPostCondition(ret.toString());
                 return ret;
             }
 
             if (stmt instanceof IfThenElse) {
-                stmt.setPreCondition(aState.clone());
+                stmt.setPreCondition(aState.toString());
                 let ret = this._StateAbstractDomain.SetOperators.union(
                     this.C(stmt.guard, this.S(stmt.thenBranch, aState.clone(), flags)),
                     this.C(stmt.guard.negate(), this.S(stmt.elseBranch, aState.clone(), flags)),
                 )
-                stmt.setPostCondition(ret.clone());
+                stmt.setPostCondition(ret.toString());
                 return ret;
             }
 
             if (stmt instanceof WhileLoop) {
                 let currentState: AbstractProgramState<Interval> = aState.clone();
                 let prevState: AbstractProgramState<Interval>;
-                stmt.setPreCondition(currentState.clone());
+                stmt.setPreCondition(currentState.toString());
                 do {
                     prevState = currentState.clone();
 
@@ -213,7 +213,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
 
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
 
-                stmt.setInvariant(currentState);
+                stmt.setInvariant(currentState.toString());
 
                 if (flags.narrowing) {
                     prevState = aState.clone();
@@ -229,7 +229,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
                 }
                 let ret = this.C(stmt.guard.negate(), currentState);
-                stmt.setPostCondition(ret);
+                stmt.setPostCondition(ret.toString());
                 return ret;
             }
 
@@ -237,7 +237,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 // B#[b](lfp(λx.s# ∨ S​(D#[S]∘B#[not b])x)) ∘ D#[S]s
                 let currentState: AbstractProgramState<Interval> = this.S(stmt.body, aState.clone(), flags);
                 let prevState: AbstractProgramState<Interval>;
-                stmt.setPreCondition(aState.clone())
+                stmt.setPreCondition(aState.toString())
                 do {
                     prevState = currentState.clone();
                     currentState = this._StateAbstractDomain.SetOperators.union(
@@ -246,7 +246,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     );
                     if (flags.widening) currentState = this._StateAbstractDomain.widening(prevState, currentState);
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                stmt.setInvariant(currentState.clone());
+                stmt.setInvariant(currentState.toString());
 
                 if (flags.narrowing) {
                     prevState = aState.clone();
@@ -262,7 +262,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
                 }
                 let ret = this.C(stmt.guard, currentState);
-                stmt.setPostCondition(ret.clone());
+                stmt.setPostCondition(ret.toString());
                 return ret;
             }
 
@@ -270,7 +270,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 // Initialization: Execute S
                 let currentState: AbstractProgramState<Interval> = this.S(stmt.initialStatement, aState, flags);
                 let prevState: AbstractProgramState<Interval>;
-                stmt.setPreCondition(aState.clone());
+                stmt.setPreCondition(aState.toString());
                 do {
                     prevState = currentState;
                     currentState = this._StateAbstractDomain.SetOperators.union(
@@ -279,7 +279,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     );
                     if (flags.narrowing) currentState = this._StateAbstractDomain.widening(prevState, currentState);
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                stmt.setInvariant(currentState.clone());
+                stmt.setInvariant(currentState.toString());
                 if (flags.narrowing) {
                     prevState = aState.clone();
                     do {
@@ -294,7 +294,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
                 }
                 let ret = this.C(stmt.guard.negate(), currentState);
-                stmt.setPostCondition(ret.clone());
+                stmt.setPostCondition(ret.toString());
                 return ret;
             }
 
@@ -305,7 +305,8 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         // INIT
         if (this.thresholds === undefined) {
             this.thresholds = [this._IntervalFactory.meta.m, this._IntervalFactory.meta.n]
-            stmt.iter((node)=>{if(node instanceof Numeral) this.thresholds?.push(node.value)})
+            stmt.iter((node) => { if (node instanceof Numeral) this.thresholds?.push(node.value) })
+            this.thresholds.sort();
         }
         return Body(stmt, aState, flags);
     }

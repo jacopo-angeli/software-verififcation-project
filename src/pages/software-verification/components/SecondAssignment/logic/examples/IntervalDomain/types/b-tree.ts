@@ -2,31 +2,54 @@ export abstract class BinaryTree<T> {
   constructor(
     private _data: T,
   ) { }
+  
   public get data() { return this._data };
   public set data(data: T) { this._data = data };
+
+  abstract clone(wwith?: T): BinaryTree<T>;
+
+  // Implementing the iter function for tree traversal
+  abstract iter(callback: (node: BinaryTree<T>) => void): void;
 }
 
 export class LeafNode<T> extends BinaryTree<T> {
-  constructor(
-    _data: T,
-  ) {
-    super(_data);
+  clone(wwith?: T): LeafNode<T> {
+    if (wwith) return new LeafNode<T>(wwith);
+    return new LeafNode<T>(this.data)
+  }
+
+  iter(callback: (node: BinaryTree<T>) => void): void {
+    // Apply callback to the current node (LeafNode)
+    callback(this);
   }
 }
-export class VariableNode<T> extends LeafNode<T>{
+
+export class VariableNode<T> extends LeafNode<T> {
   public get label(): string {
-    return this._lable;
+    return this._label;
   }
   public set label(value: string) {
-    this._lable = value;
+    this._label = value;
   }
+
   constructor(
     _data: T,
-    private _lable: string
+    private _label: string
   ) {
     super(_data);
   }
+
+  clone(wwith?: T): VariableNode<T> {
+    if (wwith) return new VariableNode<T>(wwith, this._label);
+    return new VariableNode<T>(this.data, this._label)
+  }
+
+  iter(callback: (node: BinaryTree<T>) => void): void {
+    // Apply callback to the current node (VariableNode)
+    callback(this);
+  }
 }
+
 export class BinaryNode<T> extends BinaryTree<T> {
   public get operator(): string {
     return this._operator;
@@ -34,7 +57,7 @@ export class BinaryNode<T> extends BinaryTree<T> {
   public set operator(value: string) {
     this._operator = value;
   }
-  
+
   public get right(): BinaryTree<T> {
     return this._right;
   }
@@ -47,6 +70,7 @@ export class BinaryNode<T> extends BinaryTree<T> {
   public set left(value: BinaryTree<T>) {
     this._left = value;
   }
+
   constructor(
     _data: T,
     private _left: BinaryTree<T>,
@@ -55,13 +79,43 @@ export class BinaryNode<T> extends BinaryTree<T> {
   ) {
     super(_data);
   }
+
+  clone(wwith?: T): BinaryNode<T> {
+    if (wwith) return new BinaryNode<T>(wwith, this._left, this._right, this._operator)
+    return new BinaryNode<T>(this.data, this._left.clone(), this._right.clone(), this._operator)
+  }
+
+  // Implementing in-order traversal
+  iter(callback: (node: BinaryTree<T>) => void): void {
+    // Traverse the left subtree
+    this._left.iter(callback);
+    // Apply callback to the current node (BinaryNode)
+    callback(this);
+    // Traverse the right subtree
+    this._right.iter(callback);
+  }
 }
+
 export class UnaryNode<T> extends BinaryTree<T> {
+  clone(wwith?: T): UnaryNode<T> {
+    if (wwith) return new UnaryNode<T>(wwith, this._child);
+    return new UnaryNode<T>(this.data, this._child.clone());
+  }
+
   constructor(
     _data: T,
     private _child: BinaryTree<T>,
   ) {
     super(_data);
   }
-  public get child (){return this._child}
+
+  public get child() { return this._child }
+
+  // Implementing unary node iter function
+  iter(callback: (node: BinaryTree<T>) => void): void {
+    // Apply callback to the current node (UnaryNode)
+    callback(this);
+    // Traverse the child subtree
+    this._child.iter(callback);
+  }
 }

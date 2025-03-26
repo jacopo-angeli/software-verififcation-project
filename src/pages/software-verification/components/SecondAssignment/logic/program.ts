@@ -16,7 +16,7 @@ export class AI_INT {
             console.log(Parser.parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory));
             let results = {
                 tokenList: new Array<Token>(),
-                ast: new Skip<Interval>(),
+                ast: new Skip(),
                 initialState: new AbstractProgramState<Interval>(),
                 annotatedProgram: "",
                 dSharpResult: new AbstractProgramState<Interval>(),
@@ -30,7 +30,7 @@ export class AI_INT {
                 results.initialState,
                 { widening: widening, narrowing: narrowing }
             );
-            results.annotatedProgram = results.ast.toAnnotatedProgram();
+            results.annotatedProgram = results.ast.annotatedProgram();
 
             return Object.values(results).map(v => {
                 return v.toString();

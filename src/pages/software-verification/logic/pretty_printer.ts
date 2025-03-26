@@ -1,4 +1,3 @@
-import { AbstractValue } from "../components/SecondAssignment/model/types/abstract_value";
 import { ArithmeticBinaryOperator, ArithmeticExpression, DecrementOperator, IncrementOperator, ArithmeticUnaryOperator, Numeral, Variable } from "../model/while+/arithmetic_expression";
 import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator, Boolean } from "../model/while+/boolean_expression";
 import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
@@ -43,7 +42,7 @@ function prettyPrintBoolean(expr: BooleanExpression, level: number = 0): string 
 }
 
 // Pretty printer function for Statements
-function prettyPrintStatement<T extends AbstractValue>(statement: Statement<T>, level: number = 0): string {
+function prettyPrintStatement(statement: Statement, level: number = 0): string {
   if (statement instanceof Assignment) {
     return `${indent(level)}Assignment:\n${indent(level + 1)}Variable: ${statement.variable.toString()}\n${indent(level + 1)}Value:\n${prettyPrintArithmetic(statement.value, level + 2)}`;
   } else if (statement instanceof Skip) {

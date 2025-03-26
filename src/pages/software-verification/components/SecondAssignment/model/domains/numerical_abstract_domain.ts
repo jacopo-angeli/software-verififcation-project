@@ -73,59 +73,52 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
             return new VariableNode(this.E(aExpr, aState).value, aExpr instanceof Variable ? aExpr.name : "");
         }
 
-        const intersect = (node: BinaryTree<T>): void => {
-            node.data = this.BackwardOperators.leqZero(node.data);
+        const intersect = (node: BinaryTree<T>): BinaryTree<T> => {
+            return node.clone(this.BackwardOperators.leqZero(node.data));
         }
 
-        const propagate = (node: BinaryTree<T>): void => {
+        const propagate = (node: BinaryTree<T>): BinaryTree<T> => {
+            if (node instanceof LeafNode) {
+                return new LeafNode<T>(node.data);
+            }
             if (node instanceof UnaryNode) {
-                node.child.data = this.BackwardOperators.minus(node.data, node.child.data)
-                propagate(node.child);
+                return node.clone({
+                    data: this.BackwardOperators.minus(node.data, node.child.data),
+                    child: propagate(node.child)
+                })
             }
             if (node instanceof BinaryNode) {
                 let aux;
                 switch (node.operator) {
                     case "+":
                         aux = this.BackwardOperators.add(node.left.data, node.right.data, node.data);
-                        node.left.data = aux.x;
-                        node.left.data = aux.y;
                         break;
                     case "-":
                         aux = this.BackwardOperators.subtract(node.left.data, node.right.data, node.data);
-                        node.left.data = aux.x;
-                        node.left.data = aux.y;
                         break;
                     case "*":
                         aux = this.BackwardOperators.multiply(node.left.data, node.right.data, node.data);
-                        node.left.data = aux.x;
-                        node.left.data = aux.y;
                         break;
                     case "/":
                         aux = this.BackwardOperators.divide(node.left.data, node.right.data, node.data);
                         node.left.data = aux.x;
                         node.left.data = aux.y;
                         break;
-                }
-                propagate(node.left);
-                propagate(node.right);
+                };
+                let ret = node.clone();
+                ret.left = propagate(node.left.clone(aux?.x));
+                ret.right = propagate(node.right.clone(aux?.x));
+                return ret;
             }
+            throw Error();
         }
 
-        const update = (aState: AbstractProgramState<T>, AVT: BinaryTree<T>): void => {
-            if (AVT instanceof BinaryNode) {
-                update(aState, AVT.left);
-                update(aState, AVT.right);
-            }
-            if (AVT instanceof UnaryNode) update(aState, AVT.child);
-            if (AVT instanceof VariableNode) aState.update(AVT.label, AVT.data)
-        }
 
         if (canonical instanceof BooleanBinaryOperator) {
-            let AVT = evaluate(canonical.leftOperand, aState);
-            intersect(AVT);
-            propagate(AVT);
             let ret = aState.clone();
-            update(ret, AVT);
+            (propagate(intersect(evaluate(canonical.leftOperand, aState)))).iter((node) => {
+                if (node instanceof VariableNode) aState.update(node.label, node.data)
+            })
             return ret;
         }
 
@@ -144,7 +137,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
 
         throw Error();
     };
-    public S(expr: Statement<T>, aState: AbstractProgramState<T>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<T> {
+    public S(expr: Statement, aState: AbstractProgramState<T>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<T> {
         let ret = aState.clone();
         ret.variables().forEach((v, i) => { ret.update(v, this.Top) });
         return ret;

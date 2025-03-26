@@ -63,6 +63,6 @@ export class StateAbstractDomain<T extends AbstractValue> {
             mappedState.set(variable, newValue);
         });
 
-        return this.constructor(mappedState);
+        return new AbstractProgramState<T>(mappedState);
     }
 }

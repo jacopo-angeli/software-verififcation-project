@@ -17,13 +17,13 @@ export class AbstractProgramState<T extends AbstractValue> {
 
     toString(): string {
         if (this._state.size === 0) return "{ }";
-        if (this.isBottom()) return `⊥ : { ${this._state.keys().map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).toArray().join(", ")} }`;
-        if (this.isTop()) return `T : { ${this._state.keys().map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).toArray().join(", ")} }`;
-        return `{ ${this._state.keys().map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).toArray().join(", ")} }`;
+        if (this.isBottom()) return `⊥ : { $${Array.from(this._state.keys()).map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).join(", ")} }`;
+        if (this.isTop()) return `T : { ${Array.from(this._state.keys()).map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).join(", ")} }`;
+        return `{ ${Array.from(this._state.keys()).map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).join(", ")} }`;
     };
 
-    isBottom(): boolean { return this._state.keys().reduce((acc, k) => { return acc || (this._state.get(k as string) instanceof BottomValue)}, false); }
-    isTop(): boolean { return this._state.keys().reduce((acc, k) => { return acc && (this._state.get(k as string) instanceof TopValue) }, true); }
+    isBottom(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc || (this._state.get(k as string) instanceof BottomValue)}, false); }
+    isTop(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc && (this._state.get(k as string) instanceof TopValue) }, true); }
 
     
     variables(): Array<string> {
@@ -40,6 +40,6 @@ export class AbstractProgramState<T extends AbstractValue> {
             if (wwhit && key === wwhit.v) ret.set(key, wwhit.val);
             else ret.set(key, value);
         });
-        return this.constructor(ret);
+        return new AbstractProgramState<T>(ret);
     };
 }
