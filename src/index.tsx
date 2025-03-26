@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom/client";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import SofwareVerificationPage from "./pages/software-verification/view/SoftwareVerification";
+import SofwareVerificationPage from "./pages/home/view/SoftwareVerification";
 import "./index.css";
 
 function App() {

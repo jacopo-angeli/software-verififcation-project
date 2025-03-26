@@ -527,7 +527,6 @@ export class Parser {
                 throw new InitialStateFormatError(`Format error. Check the grammar above.`)
             }
         })
-        console.log(ret);
         return new AbstractProgramState<Interval>(ret);
     }
 

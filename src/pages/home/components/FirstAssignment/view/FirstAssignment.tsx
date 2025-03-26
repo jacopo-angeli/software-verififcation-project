@@ -145,7 +145,7 @@ r = q - p`);
 
 	return (
 		<div id="first-assignment">
-			<h2>First Assignment</h2>
+			<h2>Interpreter</h2>
 			<p>
 				<Latex>
 					{`Design and implement an interpreter for the denotational semantics of While+. This means to write a program I, in the programming language you prefer and deem more suitable, such that:<br>
@@ -164,14 +164,6 @@ r = q - p`);
 				</Latex>
 			</p>
 			<div className="submission">
-				<h3>Submission</h3>
-				<h4>Instructions and notes</h4>
-				<p>
-					Using the following syntax, insert an initial state and a while+ program, use the <a href="#first-assignment-button">"run" button</a> below to check the results.
-				</p>
-				<p>
-					<b>Note:</b> as part of the instructions, running the program with the "Fix point iteration limit" field empty, may lead to an apparently freeze of the window due to the infinite fixed point search (if used a loop construct). The infinite looping can be witnessed using the browser console.
-				</p>
 				<div className="syntaxes">
 					<div className="initial-state-syntax">
 						<h5>Initial state grammar</h5>

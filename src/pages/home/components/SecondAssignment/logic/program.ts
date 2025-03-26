@@ -10,10 +10,15 @@ import { IntervalFactory } from "./examples/IntervalDomain/types/interval_factor
 export class AI_INT {
 
     public static api = {
-        WebApp: (program: string, initialState: string, min: number, max: number, widening: boolean, narrowing: boolean) => {
-            let _IntervalFactory = new IntervalFactory({m:min, n:max});
+        WebApp: (program: string, initialState: string, min: number, max: number, widening: boolean, narrowing: boolean): {
+            tokenList: Token[];
+            ast: Skip;
+            initialState: AbstractProgramState<Interval>;
+            annotatedProgram: string;
+            dSharpResult: AbstractProgramState<Interval>;
+        } => {
+            let _IntervalFactory = new IntervalFactory({ m: min, n: max });
             let _IntervalDomain = new IntervalDomain(_IntervalFactory);
-            console.log(Parser.parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory));
             let results = {
                 tokenList: new Array<Token>(),
                 ast: new Skip(),
@@ -31,12 +36,10 @@ export class AI_INT {
                 { widening: widening, narrowing: narrowing }
             );
             results.annotatedProgram = results.ast.annotatedProgram();
-
-            return Object.values(results).map(v => {
-                return v.toString();
-            });
+            console.log(results)
+            return results;
         },
-        Pdf:(program: string, initialState: string, min: number, max: number, widening: boolean, narrowing: boolean)=>{
+        Pdf: (program: string, initialState: string, min: number, max: number, widening: boolean, narrowing: boolean) => {
 
         }
     };

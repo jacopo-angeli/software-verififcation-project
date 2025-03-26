@@ -8,17 +8,17 @@ export abstract class Statement {
   public setPreCondition(c: string) { this.preCondition = c; }
   public setPostCondition(c: string) { this.postCondition = c; }
 
-  protected static indent(level: number): string {
+  protected indent(level: number = 0): string {
     return ' '.repeat(level * 2);
   }
-  public abstract annotatedProgram(level: number): string;
+  public annotatedProgram(level: number = 0): string { throw Error('Abstract class object cannot exists.') };
 
   abstract iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void;
 }
 
 export class Assignment extends Statement {
-  public annotatedProgram(level: number): string {
-    return `${Statement.indent(level)}${this.preCondition}\n${Statement.indent(level)}${this.variable.name}=${this.value.toString()};\n${Statement.indent(level)}${this.postCondition}\n`;
+  public annotatedProgram(level: number = 0): string {
+    return `${this.indent(level)}${this.variable.name}=${this.value}`;
   }
   constructor(public variable: Variable, public value: ArithmeticExpression) {
     super();
@@ -34,7 +34,7 @@ export class Assignment extends Statement {
 
 export class Skip extends Statement {
   public annotatedProgram(level: number = 0): string {
-    return `${Statement.indent(level)}skip;\n`;
+    return `${this.indent(level)}skip`;
   }
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
@@ -42,8 +42,8 @@ export class Skip extends Statement {
 }
 
 export class Concatenation extends Statement {
-  public annotatedProgram(level: number): string {
-    return `${this.firstStatement.annotatedProgram(level)};${this.secondStatement.annotatedProgram(level)};`;
+  public annotatedProgram(level: number = 0): string {
+    return `${this.firstStatement.annotatedProgram(level)};\n${this.secondStatement.annotatedProgram(level)}`;
   }
   constructor(public firstStatement: Statement, public secondStatement: Statement) {
     super();
@@ -57,8 +57,8 @@ export class Concatenation extends Statement {
 }
 
 export class IfThenElse extends Statement {
-  public annotatedProgram(level: number): string {
-    return `${Statement.indent(level)}${this.preCondition}\nif(${this.guard.toString()})then{\n${this.thenBranch.annotatedProgram(level + 1)}\n${Statement.indent(level)}} else {${this.elseBranch.annotatedProgram(level + 1)}\n${Statement.indent(level)}}${Statement.indent(level)}${this.postCondition}\n`;
+  public annotatedProgram(level: number = 0): string {
+    return `${this.indent(level)}if(${this.guard.toString()})then{\n${this.thenBranch.annotatedProgram(level + 1)}\n${this.indent(level)}}else{\n${this.elseBranch.annotatedProgram(level + 1)}\n${this.indent(level)}}`;
   }
   constructor(
     public guard: BooleanExpression,
@@ -92,8 +92,8 @@ export abstract class Loop extends Statement {
 }
 
 export class WhileLoop extends Loop {
-  public annotatedProgram(level: number): string {
-    return `${Statement.indent(level)}${this.preCondition}\nwhile(${this.guard.toString()}){\n${Statement.indent(level)}${this.body.annotatedProgram(level+1)}\n${Statement.indent(level)}} \n${Statement.indent(level)}${this.postCondition}\n`;
+  public annotatedProgram(level: number = 0): string {
+    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}while(${this.guard.toString()}){\n${this.indent(level + 1)}//inv:${this.invariant}\n${this.body.annotatedProgram(level + 1)}\n${this.indent(level+1)}//post:${this.postCondition}\n${this.indent(level)}}`;
   }
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
@@ -103,8 +103,8 @@ export class WhileLoop extends Loop {
 }
 
 export class RepeatUntilLoop extends Loop {
-  public annotatedProgram(level: number): string {
-    return `${Statement.indent(level)}${this.preCondition}\nrepeat{\n${Statement.indent(level)}${this.body.annotatedProgram(level+1)}\n${Statement.indent(level)}}until(${this.guard.toString()})\n${Statement.indent(level)}${this.postCondition}\n`;
+  public annotatedProgram(level: number = 0): string {
+    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}repeat{\n${this.body.annotatedProgram(level + 1)}\n${this.indent(level)}${this.indent(level + 1)}//inv:${this.invariant}\n}until(${this.guard.toString()})\n${this.indent(level)}//post:${this.postCondition}`;
   }
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
     fn(this);
@@ -114,8 +114,8 @@ export class RepeatUntilLoop extends Loop {
 }
 
 export class ForLoop extends Loop {
-  public annotatedProgram(level: number): string {
-    return `${Statement.indent(level)}${this.preCondition}\n for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${this.body.annotatedProgram(level+1)}\n${Statement.indent(level)} \n${Statement.indent(level)}${this.postCondition}\n`;
+  public annotatedProgram(level: number = 0): string {
+    return `${this.indent(level)}//pre:${this.preCondition}\n${this.indent(level)}for(${this.initialStatement.annotatedProgram()};${this.guard.toString()};${this.incrementStatement.annotatedProgram()}){\n${this.indent(level + 1)}//inv:${this.invariant}\n${this.body.annotatedProgram(level + 1)}\n${this.indent(level)}}\n${this.indent(level)}//post:${this.postCondition}`;
   }
   constructor(
     body: Statement,

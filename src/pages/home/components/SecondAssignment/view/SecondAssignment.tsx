@@ -45,15 +45,12 @@ const SecondAssignment = () => {
 		}));
 
 		try {
-
-			let CurrentRun = AI_INT.api.WebApp(
-				formFields.program, 
-				formFields.abstractState, 
-				formFields.lowerBound, 
-				formFields.upperBound, 
-				formFields.widening, 
-				formFields.narrowing).toString();
+			let CurrentRun = AI_INT.api.WebApp(formFields.program, formFields.abstractState, formFields.lowerBound, formFields.upperBound, formFields.widening, formFields.narrowing);
 			console.log(CurrentRun);
+			setResults((prevState) => ({
+				...prevState,
+				annotatedProgram: CurrentRun.annotatedProgram.replace(/(\\n)/g, "\n"),
+			}));
 		} catch (e) {
 			console.log(e);
 			if (e instanceof InitialStateFormatError) {
@@ -198,7 +195,7 @@ r = q - p`,
 
 	return (
 		<div id="second-assignment">
-			<h2>Second assignment</h2>
+			<h2>Abstract Interpreter</h2>
 			<p>
 				<Latex>
 					{`Implement an abstract interpreter for the abstract denotational semantics $D^\\#$ of While (cf. Chapter 4 of the lecture notes), where the language includes arithmetic expressions that may give rise to run-time errors, such as integer divisions <em>a1 % a2</em>, and may modify the current state, such as variable increments <em>x++</em> and decrements <em>x--</em>.<br>
@@ -222,11 +219,6 @@ r = q - p`,
 				</Latex>
 			</p>
 			<div className="submission">
-				<h3>Submission</h3>
-				<h4>Instructions and notes</h4>
-				<p>
-					<em>Note:</em> ℕ is {"{ x | -9007199254740991 < x < 9007199254740991 }"}, due to maximum safe value for javascript version of integers.
-				</p>
 				<div className="syntaxes">
 					<div className="initial-state-syntax">
 						<h5>Abstract state grammar</h5>
