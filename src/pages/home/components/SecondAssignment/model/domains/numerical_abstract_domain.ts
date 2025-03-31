@@ -1,6 +1,6 @@
 import { TokenType } from "../../../../model/token";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Variable } from "../../../../model/while+/arithmetic_expression";
-import { BooleanBinaryOperator, BooleanConcatenation, BooleanExpression } from "../../../../model/while+/boolean_expression";
+import { BooleanBinaryOperator, BooleanExpression } from "../../../../model/while+/boolean_expression";
 import { Statement } from "../../../../model/while+/statement";
 import { BinaryNode, BinaryTree, LeafNode, UnaryNode, VariableNode } from "../../logic/examples/IntervalDomain/types/b-tree";
 import { AbstractProgramState } from "../types/abstract_state";
@@ -40,6 +40,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
 
 
     abstract widening: (x: T, y: T, options?: { tresholds?: Array<number>, },) => T
+    abstract narrowing: (x: T, y: T) => T
 
 
     // Sharp functions
@@ -47,7 +48,6 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
         return this.Top;
     };
     public C(bExpr: BooleanExpression, aState: AbstractProgramState<T>): AbstractProgramState<T> {
-        let canonical = bExpr.canonicalForm() as BooleanBinaryOperator | BooleanConcatenation;
 
         const evaluate = (aExpr: ArithmeticExpression, aState: AbstractProgramState<T>): BinaryTree<T> => {
 
@@ -70,7 +70,11 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                     this.E(aExpr, aState).value,
                 )
             }
-            return new VariableNode(this.E(aExpr, aState).value, aExpr instanceof Variable ? aExpr.name : "");
+            if (aExpr instanceof Variable) {
+                return new VariableNode(this.E(aExpr, aState).value, aExpr.name);
+            } else {
+                return new LeafNode(this.E(aExpr, aState).value)
+            }
         }
 
         const intersect = (node: BinaryTree<T>): BinaryTree<T> => {
@@ -78,6 +82,9 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
         }
 
         const propagate = (node: BinaryTree<T>): BinaryTree<T> => {
+            if (node instanceof VariableNode) {
+                return new VariableNode<T>(node.data, node.label);
+            }
             if (node instanceof LeafNode) {
                 return new LeafNode<T>(node.data);
             }
@@ -114,25 +121,29 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
         }
 
 
-        if (canonical instanceof BooleanBinaryOperator) {
-            let ret = aState.clone();
-            (propagate(intersect(evaluate(canonical.leftOperand, aState)))).iter((node) => {
-                if (node instanceof VariableNode) aState.update(node.label, node.data)
-            })
-            return ret;
-        }
-
-        if (canonical instanceof BooleanConcatenation) {
-            if (canonical.operator.type === TokenType.AND)
-                return this._StateAbstractDomain.SetOperators.union(
-                    this.C(canonical.leftOperand, aState),
-                    this.C(canonical.leftOperand, aState)
-                )
-            if (canonical.operator.type === TokenType.OR)
-                return this._StateAbstractDomain.SetOperators.intersection(
-                    this.C(canonical.leftOperand, aState),
-                    this.C(canonical.leftOperand, aState)
-                )
+        if (bExpr instanceof BooleanBinaryOperator) {
+            if (bExpr.leftOperand instanceof ArithmeticExpression && bExpr.rightOperand instanceof ArithmeticExpression) {
+                let ret = aState.clone();
+                console.log("\n")
+                console.log((intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                console.log(propagate(intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                console.log("\n");
+                (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).iter((node) => {
+                    if (node instanceof VariableNode) ret.update(node.label, node.data)
+                })
+                return ret;
+            } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {
+                if (bExpr.operator.type === TokenType.AND)
+                    return this._StateAbstractDomain.SetOperators.union(
+                        this.C(bExpr.leftOperand, aState),
+                        this.C(bExpr.leftOperand, aState)
+                    )
+                if (bExpr.operator.type === TokenType.OR)
+                    return this._StateAbstractDomain.SetOperators.intersection(
+                        this.C(bExpr.leftOperand, aState),
+                        this.C(bExpr.leftOperand, aState)
+                    )
+            }
         }
 
         throw Error();

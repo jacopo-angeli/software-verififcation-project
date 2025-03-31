@@ -1,6 +1,7 @@
 import { Lexer } from "../../../logic/lexer";
 import { Parser } from "../../../logic/parser";
 import { Token } from "../../../model/token";
+import { BooleanBinaryOperator } from "../../../model/while+/boolean_expression";
 import { Skip, } from "../../../model/while+/statement";
 import { AbstractProgramState } from "../model/types/abstract_state";
 import { IntervalDomain } from "./examples/IntervalDomain/Domains/interval_domain";
@@ -28,7 +29,8 @@ export class AI_INT {
             };
 
             results.tokenList = Lexer.tokenize(program);
-            results.ast = Parser.parse(results.tokenList);
+            results.ast = Parser.parse(results.tokenList)
+            results.ast.iter(e => {if(e instanceof BooleanBinaryOperator) e.eleq0()});
             results.initialState = Parser.parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory);
             results.dSharpResult = _IntervalDomain.S(
                 results.ast,
@@ -36,7 +38,6 @@ export class AI_INT {
                 { widening: widening, narrowing: narrowing }
             );
             results.annotatedProgram = results.ast.annotatedProgram();
-            console.log(results)
             return results;
         },
         Pdf: (program: string, initialState: string, min: number, max: number, widening: boolean, narrowing: boolean) => {

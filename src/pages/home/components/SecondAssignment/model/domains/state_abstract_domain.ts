@@ -36,7 +36,7 @@ export class StateAbstractDomain<T extends AbstractValue> {
     public narrowing(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): AbstractProgramState<T> {
         if (X.isBottom()) return Y;
         if (Y.isBottom()) return X;
-        return this.merge(X, Y, (x, y) => x && y ? this._NumericalAbstractDomain.widening(x, y) as T : (x ?? y)!);
+        return this.merge(X, Y, (x, y) => x && y ? this._NumericalAbstractDomain.narrowing(x, y) as T : (x ?? y)!);
     }    
 
     public SetOperators = {

@@ -10,6 +10,8 @@ export abstract class BinaryTree<T> {
 
   // Implementing the iter function for tree traversal
   abstract iter(callback: (node: BinaryTree<T>) => void): void;
+
+  abstract toString():string;
 }
 
 export class LeafNode<T> extends BinaryTree<T> {
@@ -22,6 +24,9 @@ export class LeafNode<T> extends BinaryTree<T> {
     // Apply callback to the current node (LeafNode)
     callback(this);
   }
+  toString():string{
+    return `Leaf(data:${this.data})`;
+  };
 }
 
 export class VariableNode<T> extends LeafNode<T> {
@@ -48,6 +53,10 @@ export class VariableNode<T> extends LeafNode<T> {
     // Apply callback to the current node (VariableNode)
     callback(this);
   }
+
+  toString():string{
+    return `Variable(label:${this._label}, data:${this.data})`;
+  };
 }
 
 export class BinaryNode<T> extends BinaryTree<T> {
@@ -94,7 +103,10 @@ export class BinaryNode<T> extends BinaryTree<T> {
     // Traverse the right subtree
     this._right.iter(callback);
   }
-}
+  toString():string{
+    return `BinaryNode(data:${this.data}, left:${this.left.toString()}, right: ${this.right.toString()})`;
+  };
+} 
 
 export class UnaryNode<T> extends BinaryTree<T> {
   clone(wwith?: T): UnaryNode<T> {
@@ -118,4 +130,7 @@ export class UnaryNode<T> extends BinaryTree<T> {
     // Traverse the child subtree
     this._child.iter(callback);
   }
+  toString():string{
+    return `UnaryNode(data:${this.data}, child:${this._child.toString()})`;
+  };
 }

@@ -1,56 +1,41 @@
 import { Token } from "../token";
+import { AST } from "./ast";
 
-export abstract class ArithmeticExpression {
-  abstract map(fn: (expr: ArithmeticExpression) => ArithmeticExpression): ArithmeticExpression;
-  abstract iter(fn: (expr: ArithmeticExpression) => void): void;
-}
+export abstract class ArithmeticExpression extends AST { }
 
 export class ArithmeticBinaryOperator extends ArithmeticExpression {
-  leftOperand: ArithmeticExpression;
-  rightOperand: ArithmeticExpression;
-  operator: Token;
-
   constructor(
-    leftOperand: ArithmeticExpression,
-    rightOperand: ArithmeticExpression,
-    operator: Token,
+    public leftOperand: ArithmeticExpression,
+    public rightOperand: ArithmeticExpression,
+    public operator: Token,
   ) {
     super();
-    this.leftOperand = leftOperand;
-    this.rightOperand = rightOperand;
-    this.operator = operator;
   }
 
   toString(): string {
     return `(${this.leftOperand.toString()} ${this.operator.value} ${this.rightOperand.toString()})`;
   }
 
-  map(fn: (expr: ArithmeticExpression) => ArithmeticExpression): ArithmeticExpression {
+  iter(fn: (expr: AST) => void): void {
+    fn(this);
+    this.leftOperand.iter(fn);
+    this.rightOperand.iter(fn);
+  }
+
+  map(fn: (expr: AST) => AST): AST {
     return fn(new ArithmeticBinaryOperator(
       this.leftOperand.map(fn),
       this.rightOperand.map(fn),
       this.operator
     ));
   }
-  iter(fn: (expr: ArithmeticExpression) => void): void {
-    fn(this);
-    this.leftOperand.iter(fn);
-    this.rightOperand.iter(fn);
-  }
 }
 
 export class ArithmeticUnaryOperator extends ArithmeticExpression {
-  operand: ArithmeticExpression;
-  operator: Token;
-
   constructor(
-    operand: ArithmeticExpression,
-    operator: Token,
-  ) {
-    super();
-    this.operand = operand;
-    this.operator = operator;
-  }
+    public operand: ArithmeticExpression,
+    public operator: Token,
+  ) { super(); }
 
   toString(): string {
     return `(${this.operator.value}${this.operand.toString()})`;
@@ -67,12 +52,10 @@ export class ArithmeticUnaryOperator extends ArithmeticExpression {
 }
 
 export class Numeral extends ArithmeticExpression {
-  value: number;
 
-  constructor(value: number) {
-    super();
-    this.value = value;
-  }
+  constructor(
+    public value: number,
+  ) { super() }
 
   toString(): string {
     return this.value.toString();
@@ -87,12 +70,10 @@ export class Numeral extends ArithmeticExpression {
 }
 
 export class Variable extends ArithmeticExpression {
-  name: string;
 
-  constructor(name: string) {
-    super();
-    this.name = name;
-  }
+  constructor(
+    public name: string
+  ) { super(); }
 
   toString(): string {
     return this.name;
@@ -108,14 +89,10 @@ export class Variable extends ArithmeticExpression {
 }
 
 export class IncrementOperator extends ArithmeticExpression {
-  variable: Variable;
-
+  
   constructor(
-    variable: Variable,
-  ) {
-    super();
-    this.variable = variable;
-  }
+    public variable: Variable,
+  ) { super(); }
 
   toString(): string {
     return `${this.variable.name}++`;
@@ -132,14 +109,9 @@ export class IncrementOperator extends ArithmeticExpression {
 }
 
 export class DecrementOperator extends ArithmeticExpression {
-  variable: Variable;
-
   constructor(
-    variable: Variable,
-  ) {
-    super();
-    this.variable = variable;
-  }
+    public variable: Variable,
+  ) { super(); }
 
   toString(): string {
     return `${this.variable.name}--`;

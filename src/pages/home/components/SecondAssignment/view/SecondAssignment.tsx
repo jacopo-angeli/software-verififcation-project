@@ -6,6 +6,7 @@ import CodeEditor from "react-textarea-code-editor-2";
 import "./SecondAssignment.css";
 import { InitialStateFormatError, ProgramFormatError } from "../../../model/errors";
 import { AI_INT } from "../logic/program";
+import prettyPrintStatement from "../../../logic/pretty_printer";
 
 const SecondAssignment = () => {
 	const [formFields, setFormFields] = useState({
@@ -49,6 +50,10 @@ const SecondAssignment = () => {
 			console.log(CurrentRun);
 			setResults((prevState) => ({
 				...prevState,
+				abstractProgramState:  CurrentRun.initialState.toString(),
+				tokenList: CurrentRun.tokenList.toString(),
+				// ast: prettyPrintStatement(CurrentRun.ast),
+				dSharpResult: CurrentRun.dSharpResult.toString(),
 				annotatedProgram: CurrentRun.annotatedProgram.replace(/(\\n)/g, "\n"),
 			}));
 		} catch (e) {

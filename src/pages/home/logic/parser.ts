@@ -1,6 +1,6 @@
 import { Token, TokenType } from "../model/token";
 import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../model/while+/statement";
-import { Boolean, BooleanBinaryOperator, BooleanConcatenation, BooleanExpression, BooleanUnaryOperator } from "../model/while+/boolean_expression";
+import { Boolean, BooleanBinaryOperator, BooleanExpression, BooleanUnaryOperator } from "../model/while+/boolean_expression";
 import { Variable, ArithmeticBinaryOperator, ArithmeticUnaryOperator, ArithmeticExpression, Numeral, IncrementOperator, DecrementOperator} from "../model/while+/arithmetic_expression";
 import { ProgramState } from "../components/FirstAssignment/model/program_state";
 import { InitialStateFormatError, ProgramFormatError } from "../model/errors";
@@ -272,7 +272,7 @@ export class Parser {
                         let leftSide = tokens[i - 1];
                         let rightSide = tokens[i + 1];
                         // We should be good now
-                        tokens[i] = new BooleanConcatenation(leftSide, rightSide, tokens[i]);
+                        tokens[i] = new BooleanBinaryOperator(leftSide, rightSide, tokens[i]);
                         // Current situation: bra - Expr - trash - ket
                         tokens.splice(i + 1, 1);
                         tokens.splice(i - 1, 1);

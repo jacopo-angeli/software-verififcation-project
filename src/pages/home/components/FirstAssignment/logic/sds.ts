@@ -15,14 +15,14 @@ class Sds {
         }
 
         if (stmt instanceof Concatenation) {
-            return Sds.eval(stmt.secondStatement, Sds.eval(stmt.firstStatement, state, iterationLimit), iterationLimit);
+            return Sds.eval(stmt.g, Sds.eval(stmt.f, state, iterationLimit), iterationLimit);
         }
 
         if (stmt instanceof IfThenElse) {
             if (B.eval(stmt.guard, state).value)
-                return Sds.eval(stmt.thenBranch, state.copy(), iterationLimit);
+                return Sds.eval(stmt.thenB, state.copy(), iterationLimit);
             else
-                return Sds.eval(stmt.elseBranch, state.copy(), iterationLimit);
+                return Sds.eval(stmt.elseB, state.copy(), iterationLimit);
         }
 
         if (stmt instanceof WhileLoop) {
