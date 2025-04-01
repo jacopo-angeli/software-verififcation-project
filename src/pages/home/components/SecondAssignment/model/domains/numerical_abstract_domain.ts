@@ -48,6 +48,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
         return this.Top;
     };
     public C(bExpr: BooleanExpression, aState: AbstractProgramState<T>): AbstractProgramState<T> {
+        console.log("C function -----------------------")
 
         const evaluate = (aExpr: ArithmeticExpression, aState: AbstractProgramState<T>): BinaryTree<T> => {
 
@@ -60,6 +61,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                 )
             }
             if (aExpr instanceof ArithmeticUnaryOperator) {
+                console.log(this.E(aExpr, aState).value);
                 return new UnaryNode(
                     this.E(aExpr, aState).value,
                     evaluate(aExpr.operand, this.E(aExpr, aState).state),
@@ -108,28 +110,30 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                         break;
                     case "/":
                         aux = this.BackwardOperators.divide(node.left.data, node.right.data, node.data);
-                        node.left.data = aux.x;
-                        node.left.data = aux.y;
                         break;
                 };
                 let ret = node.clone();
                 ret.left = propagate(node.left.clone(aux?.x));
-                ret.right = propagate(node.right.clone(aux?.x));
+                ret.right = propagate(node.right.clone(aux?.y));
                 return ret;
             }
             throw Error();
         }
-
-
+        
+        
         if (bExpr instanceof BooleanBinaryOperator) {
             if (bExpr.leftOperand instanceof ArithmeticExpression && bExpr.rightOperand instanceof ArithmeticExpression) {
                 let ret = aState.clone();
-                console.log("\n")
-                console.log((intersect(evaluate(bExpr.leftOperand, ret))).toString());
-                console.log(propagate(intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                console.log("Evaluation", ((evaluate(bExpr.leftOperand, ret))).toString());
+                console.log("Intersection", (intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                console.log("Propagation", (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).toString());
+                console.log("C function -----------------------");
                 console.log("\n");
                 (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).iter((node) => {
-                    if (node instanceof VariableNode) ret.update(node.label, node.data)
+                    if (node instanceof VariableNode) {
+                        ret.update(node.label, node.data)
+                        console.log("Updated: ", node.label, " with ", node.data, ".");
+                    }
                 })
                 return ret;
             } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {

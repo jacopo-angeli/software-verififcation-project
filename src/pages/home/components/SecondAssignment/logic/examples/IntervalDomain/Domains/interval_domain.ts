@@ -126,9 +126,10 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             return { state: aState.clone(), value: aState.lookup(expr.name) };
         }
         if (expr instanceof ArithmeticUnaryOperator) {
+            console.log(this._IntervalFactory.new(-1 * this.E(expr.operand, aState).value.upper, -1 * this.E(expr.operand, aState).value.lower).toString())
             return {
-                state: this.E(expr, aState).state,
-                value: this._IntervalFactory.new(-1 * this.E(expr, aState).value.upper, -1 * this.E(expr, aState).value.lower)
+                state: this.E(expr.operand, aState).state,
+                value: this._IntervalFactory.new(-1 * this.E(expr.operand, aState).value.upper, -1 * this.E(expr.operand, aState).value.lower)
             }
         };
         if (expr instanceof ArithmeticBinaryOperator) {
@@ -138,7 +139,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 ["*", (x, y) => this.Operators.multiply(x, y)],
                 ["/", (x, y) => this.Operators.divide(x, y)]
             ]);
-            return {
+                        return {
                 state: this.E(expr.rightOperand, this.E(expr.leftOperand, aState).state).state,
                 value: p.get(expr.operator.value)!(this.E(expr.leftOperand, aState).value, this.E(expr.rightOperand, this.E(expr.leftOperand, aState).state).value)
             }
@@ -221,17 +222,27 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     let first = true;
                     do {
                         prevState = first ? aState.clone() : currentState.clone();
+                        console.log("\n")
+                        console.log(this.C(stmt.guard, currentState).toString());
+                        console.log(this.S(stmt.body, this.C(stmt.guard, currentState), flags).toString())
+                        console.log(this._StateAbstractDomain.SetOperators.union(
+                            prevState,
+                            this.S(stmt.body, this.C(stmt.guard, currentState), flags)
+                        ).toString());
                         currentState = this._StateAbstractDomain.narrowing(prevState, this._StateAbstractDomain.SetOperators.union(
                             prevState,
                             this.S(stmt.body, this.C(stmt.guard, currentState), flags)
                         ));
+                        console.log(currentState.toString())
+                        console.log("\n")
                         first = false;
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
                 }
-                console.log("\n")
+                console.log("Filtering with guard negated -------------")
                 console.log(stmt.guard.negate().toString())
-                console.log("\n")
                 let ret = this.C(stmt.guard.negate(), currentState);
+                console.log(ret.toString())
+                console.log("Filtering with guard negated -------------")
                 stmt.post = (ret.toString());
                 return ret;
             }
@@ -249,7 +260,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     );
                     if (flags.widening) currentState = this._StateAbstractDomain.widening(prevState, currentState);
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                stmt.inv =(currentState.toString());
+                stmt.inv = (currentState.toString());
                 console.log("Pre", aState.clone().toString(), ", New", this.S(stmt.body, this.C(stmt.guard.negate(), currentState), flags).toString())
                 if (flags.narrowing) {
                     let first = true;
@@ -283,7 +294,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     );
                     if (flags.narrowing) currentState = this._StateAbstractDomain.widening(prevState, currentState);
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                stmt.inv =(currentState.toString());
+                stmt.inv = (currentState.toString());
                 if (flags.narrowing) {
                     prevState = aState.clone();
                     do {

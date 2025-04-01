@@ -25,7 +25,7 @@ export class LeafNode<T> extends BinaryTree<T> {
     callback(this);
   }
   toString():string{
-    return `Leaf(data:${this.data})`;
+    return `(data:${this.data})`;
   };
 }
 
@@ -55,7 +55,7 @@ export class VariableNode<T> extends LeafNode<T> {
   }
 
   toString():string{
-    return `Variable(label:${this._label}, data:${this.data})`;
+    return `[label:${this._label}, data:${this.data}]`;
   };
 }
 
@@ -104,7 +104,7 @@ export class BinaryNode<T> extends BinaryTree<T> {
     this._right.iter(callback);
   }
   toString():string{
-    return `BinaryNode(data:${this.data}, left:${this.left.toString()}, right: ${this.right.toString()})`;
+    return `{{data:${this.data}, op:${this.operator} left:${this.left.toString()}, right: ${this.right.toString()}}}`;
   };
 } 
 
@@ -131,6 +131,6 @@ export class UnaryNode<T> extends BinaryTree<T> {
     this._child.iter(callback);
   }
   toString():string{
-    return `UnaryNode(data:${this.data}, child:${this._child.toString()})`;
+    return `{data:${this.data}, child:${this._child.toString()}}`;
   };
 }
