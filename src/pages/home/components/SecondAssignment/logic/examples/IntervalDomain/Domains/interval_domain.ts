@@ -32,11 +32,11 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         },
         add: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
-            return this._IntervalFactory.new(x.lower + y.lower, x.upper + y.upper)
+            return this._IntervalFactory.new(x.lower === this._IntervalFactory.meta.m ? this._IntervalFactory.meta.m : x.lower + y.lower, x.upper + y.upper)
         },
         subtract: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
-            return this._IntervalFactory.new(x.lower - y.upper, x.upper - y.lower)
+            return this._IntervalFactory.new(x.lower - y.upper, x.upper === this._IntervalFactory.meta.n ? this._IntervalFactory.meta.n : x.upper - y.lower)
         },
         multiply: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
@@ -75,37 +75,41 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         add: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
             return {
                 x: this.SetOperators.intersection(x, this.Operators.subtract(r, y)),
-                y: this.SetOperators.intersection(x, this.Operators.subtract(r, x)),
+                y: this.SetOperators.intersection(y, this.Operators.subtract(r, x)),
             }
         },
         subtract: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
             return {
                 x: this.SetOperators.intersection(x, this.Operators.add(r, y)),
-                y: this.SetOperators.intersection(x, this.Operators.subtract(x, r)),
+                y: this.SetOperators.intersection(y, this.Operators.subtract(x, r)),
             }
         },
         multiply: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
             return {
                 x: this.SetOperators.intersection(x, this.Operators.divide(r, y)),
-                y: this.SetOperators.intersection(x, this.Operators.divide(r, x)),
+                y: this.SetOperators.intersection(y, this.Operators.divide(r, x)),
             }
         },
         divide: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
             return {
                 x: this.SetOperators.intersection(x, this.Operators.divide(r, y)),
-                y: this.SetOperators.intersection(x, this.Operators.divide(r, x)),
+                y: this.SetOperators.intersection(y, this.Operators.divide(r, x)),
             }
         }
     };
 
     SetOperators = {
         union: (x: Interval, y: Interval): Interval => {
-            return this._IntervalFactory.new(Math.min(x.lower, y.lower), Math.max(x.upper, y.upper))
+            if (x instanceof Bottom) return y;
+            if (y instanceof Bottom) return x;
+            return this._IntervalFactory.new(Math.min(x.lower, y.lower), Math.max(x.upper, y.upper));
         },
         intersection: (x: Interval, y: Interval): Interval => {
-            if (Math.max(x.lower, y.lower) <= Math.min(x.upper, y.upper))
-                return this._IntervalFactory.new(Math.max(x.lower, y.lower), Math.min(x.upper, y.upper))
-            return this.Bottom;
+            if (x instanceof Bottom || y instanceof Bottom) return this.Bottom;
+            const lower = Math.max(x.lower, y.lower);
+            const upper = Math.min(x.upper, y.upper);
+            if (lower <= upper) return this._IntervalFactory.new(lower, upper);
+            else return this.Bottom;
         },
     };
     widening = (x: Interval, y: Interval, options?: { tresholds?: Array<number>; }): Interval => {
@@ -126,7 +130,6 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             return { state: aState.clone(), value: aState.lookup(expr.name) };
         }
         if (expr instanceof ArithmeticUnaryOperator) {
-            console.log(this._IntervalFactory.new(-1 * this.E(expr.operand, aState).value.upper, -1 * this.E(expr.operand, aState).value.lower).toString())
             return {
                 state: this.E(expr.operand, aState).state,
                 value: this._IntervalFactory.new(-1 * this.E(expr.operand, aState).value.upper, -1 * this.E(expr.operand, aState).value.lower)
@@ -139,7 +142,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 ["*", (x, y) => this.Operators.multiply(x, y)],
                 ["/", (x, y) => this.Operators.divide(x, y)]
             ]);
-                        return {
+            return {
                 state: this.E(expr.rightOperand, this.E(expr.leftOperand, aState).state).state,
                 value: p.get(expr.operator.value)!(this.E(expr.leftOperand, aState).value, this.E(expr.rightOperand, this.E(expr.leftOperand, aState).state).value)
             }
@@ -201,47 +204,55 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             if (stmt instanceof WhileLoop) {
                 let currentState: AbstractProgramState<Interval> = aState.clone();
                 let prevState: AbstractProgramState<Interval>;
+
+                console.log("Fixpoint ---------------------------------")
                 stmt.pre = (currentState.toString());
-                console.log(stmt.pre.toString())
                 do {
                     prevState = currentState.clone();
 
                     //currentState = prevState LUB D#[body](B#[guard])
+                    let u1 = prevState;
+                    let u2 = this.S(stmt.body, this.C(stmt.guard, currentState), flags);
                     currentState = this._StateAbstractDomain.SetOperators.union(
-                        prevState,
-                        this.S(stmt.body, this.C(stmt.guard, currentState), flags)
+                        u1, u2
                     );
+                    console.log("Union between", u1.toString(), " and ", u2.toString(), " resulted in", currentState.toString())
 
-                    if (flags.widening) currentState = this._StateAbstractDomain.widening(prevState, currentState);
+                    if (flags.widening) {
+                        console.log("Widening(", prevState.toString(), ",", currentState.toString(), ") :", this._StateAbstractDomain.widening(prevState, currentState).toString())
+                        console.log("\n")
+                        currentState = this._StateAbstractDomain.widening(prevState, currentState);
+                    }
 
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
 
                 stmt.inv = currentState.toString();
-                console.log(currentState);
+                console.log("Fixpoint found:", currentState.toString())
+                console.log("\n")
+                console.log("Fixpoint ------------------------------end")
+                console.log("\n")
+                console.log("Narrowing --------------------------------")
+                console.log("\n")
                 if (flags.narrowing) {
-                    let first = true;
                     do {
-                        prevState = first ? aState.clone() : currentState.clone();
-                        console.log("\n")
-                        console.log(this.C(stmt.guard, currentState).toString());
-                        console.log(this.S(stmt.body, this.C(stmt.guard, currentState), flags).toString())
-                        console.log(this._StateAbstractDomain.SetOperators.union(
-                            prevState,
-                            this.S(stmt.body, this.C(stmt.guard, currentState), flags)
-                        ).toString());
-                        currentState = this._StateAbstractDomain.narrowing(prevState, this._StateAbstractDomain.SetOperators.union(
-                            prevState,
-                            this.S(stmt.body, this.C(stmt.guard, currentState), flags)
-                        ));
-                        console.log(currentState.toString())
-                        console.log("\n")
-                        first = false;
+                        prevState = currentState.clone();
+                        let u1 = prevState;
+                        let u2 = this.S(stmt.body, this.C(stmt.guard, currentState), flags)
+                        currentState = this._StateAbstractDomain.SetOperators.intersection(
+                            u1, u2
+                        );
+                        console.log("Union between", u1.toString(), " and ", u2.toString(), " resulted in ", currentState.toString())
+                        currentState = this._StateAbstractDomain.narrowing(prevState, currentState);
+                        console.log("After narrowing:", currentState.toString())
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
                 }
+                console.log("Narrowing -----------------------------end")
+                console.log("\n")
                 console.log("Filtering with guard negated -------------")
-                console.log(stmt.guard.negate().toString())
+                console.log("Negated guard:", stmt.guard.negate().toString())
+                console.log("Narrowed state:", currentState.toString())
                 let ret = this.C(stmt.guard.negate(), currentState);
-                console.log(ret.toString())
+                console.log("Result:", ret.toString())
                 console.log("Filtering with guard negated -------------")
                 stmt.post = (ret.toString());
                 return ret;

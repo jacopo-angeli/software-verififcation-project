@@ -1,4 +1,4 @@
-import { Interval } from "./interval";
+import { Bottom, Interval, Top } from "./interval";
 import { Set } from "./set";
 
 export class IntervalFactory {
@@ -21,8 +21,8 @@ export class IntervalFactory {
         return new Interval(Math.max(...[this._meta.m, l]), Math.min(...[this._meta.n, u]), this._meta);
     }
 
-    public get Top(): Interval { return this.new(this._meta.m, this._meta.n); }
-    public get Bottom(): Interval { return this.new(Number.NaN, Number.NaN); }
+    public get Top(): Interval { return new Top(this._meta.m, this._meta.n, this._meta); }
+    public get Bottom(): Interval { return new Bottom(Number.NaN, Number.NaN, this._meta); }
 
     public getLessThan(max: number) {
         return this.new(this._meta.m, max - 1);
@@ -38,10 +38,11 @@ export class IntervalFactory {
     }
 
     public intersect(i1: Interval, i2: Interval): Interval {
+        if (i1 instanceof Bottom || i2 instanceof Bottom) return this.Bottom;
         const lower = Math.max(i1.lower, i2.lower);
         const upper = Math.min(i1.upper, i2.upper);
-        return this.new(lower, upper);
-
+        if (lower <= upper) return this.new(lower, upper);
+        else return this.Bottom;
     }
     public union(i1: Interval, i2: Interval): Interval {
         const lower = Math.min(i1.lower, i2.lower);

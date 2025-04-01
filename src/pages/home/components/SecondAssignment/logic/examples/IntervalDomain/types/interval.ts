@@ -19,12 +19,12 @@ export class Interval extends AbstractValue {
     }
 }
 
-export class Bottom extends Interval{
+export class Bottom extends Interval {
     public toString() {
         return "⊥ : " + super.toString();
     }
 }
-export class Top extends Interval{
+export class Top extends Interval {
     public toString() {
         return "T : " + super.toString();
     }

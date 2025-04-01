@@ -2,7 +2,7 @@ export abstract class BinaryTree<T> {
   constructor(
     private _data: T,
   ) { }
-  
+
   public get data() { return this._data };
   public set data(data: T) { this._data = data };
 
@@ -11,7 +11,7 @@ export abstract class BinaryTree<T> {
   // Implementing the iter function for tree traversal
   abstract iter(callback: (node: BinaryTree<T>) => void): void;
 
-  abstract toString():string;
+  abstract toString(): string;
 }
 
 export class LeafNode<T> extends BinaryTree<T> {
@@ -24,7 +24,7 @@ export class LeafNode<T> extends BinaryTree<T> {
     // Apply callback to the current node (LeafNode)
     callback(this);
   }
-  toString():string{
+  toString(): string {
     return `(data:${this.data})`;
   };
 }
@@ -54,7 +54,7 @@ export class VariableNode<T> extends LeafNode<T> {
     callback(this);
   }
 
-  toString():string{
+  toString(): string {
     return `[label:${this._label}, data:${this.data}]`;
   };
 }
@@ -103,10 +103,10 @@ export class BinaryNode<T> extends BinaryTree<T> {
     // Traverse the right subtree
     this._right.iter(callback);
   }
-  toString():string{
+  toString(): string {
     return `{{data:${this.data}, op:${this.operator} left:${this.left.toString()}, right: ${this.right.toString()}}}`;
   };
-} 
+}
 
 export class UnaryNode<T> extends BinaryTree<T> {
   clone(wwith?: T): UnaryNode<T> {
@@ -122,6 +122,7 @@ export class UnaryNode<T> extends BinaryTree<T> {
   }
 
   public get child() { return this._child }
+  public set child(value: BinaryTree<T>) { this._child = value }
 
   // Implementing unary node iter function
   iter(callback: (node: BinaryTree<T>) => void): void {
@@ -130,7 +131,7 @@ export class UnaryNode<T> extends BinaryTree<T> {
     // Traverse the child subtree
     this._child.iter(callback);
   }
-  toString():string{
+  toString(): string {
     return `{data:${this.data}, child:${this._child.toString()}}`;
   };
 }
