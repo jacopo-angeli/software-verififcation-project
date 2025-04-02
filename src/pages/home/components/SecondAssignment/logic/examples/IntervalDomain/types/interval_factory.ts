@@ -18,7 +18,7 @@ export class IntervalFactory {
 
     public new(l: number, u: number): Interval {
         if (l > u) throw Error(`Interval creation: invalid bounds [${l}, ${u}]`);
-        return new Interval(Math.max(...[this._meta.m, l]), Math.min(...[this._meta.n, u]), this._meta);
+        return new Interval(Math.max(this._meta.m, l), Math.min(this._meta.n, u), this._meta);
     }
 
     public get Top(): Interval { return new Top(this._meta.m, this._meta.n, this._meta); }

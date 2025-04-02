@@ -93,7 +93,6 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                 let ret = node.clone(node.data)
                 ret.child = propagate(node.child.clone(this.BackwardOperators.minus(node.child.data, node.data)));
                 return ret;
-                
             }
             if (node instanceof BinaryNode) {
                 let aux;
@@ -118,40 +117,51 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
             }
             throw Error();
         }
-        
-        
-        if (bExpr instanceof BooleanBinaryOperator) {
-            if (bExpr.leftOperand instanceof ArithmeticExpression && bExpr.rightOperand instanceof ArithmeticExpression) {
-                let ret = aState.clone();
-                console.log("Evaluation", ((evaluate(bExpr.leftOperand, ret))).toString());
-                console.log("Intersection", (intersect(evaluate(bExpr.leftOperand, ret))).toString());
-                console.log("Propagation", (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).toString());
-                (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).iter((node) => {
-                    if (node instanceof VariableNode) {
-                        ret = ret.update(node.label, node.data)
-                        console.log("Updated: ", node.label, " with ", node.data, ".");
-                        console.log(ret.toString());
-                    }
-                })
-                console.log("Result:", ret.toString())
-                console.log("C function --------------------end");
-                console.log("\n");
-                return ret;
-            } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {
-                if (bExpr.operator.type === TokenType.AND)
-                    return this._StateAbstractDomain.SetOperators.union(
-                        this.C(bExpr.leftOperand, aState),
-                        this.C(bExpr.leftOperand, aState)
-                    )
-                if (bExpr.operator.type === TokenType.OR)
-                    return this._StateAbstractDomain.SetOperators.intersection(
-                        this.C(bExpr.leftOperand, aState),
-                        this.C(bExpr.leftOperand, aState)
-                    )
-            }
-        }
 
-        throw Error();
+
+        const Body = (bExpr: BooleanExpression, aState: AbstractProgramState<T>): AbstractProgramState<T> => {
+            if (bExpr instanceof BooleanBinaryOperator) {
+                if (bExpr.leftOperand instanceof ArithmeticExpression && bExpr.rightOperand instanceof ArithmeticExpression) {
+                    let ret = aState.clone();
+                    console.log("Evaluation");
+                    console.log((evaluate(bExpr.leftOperand, ret)).toString());
+                    console.log("Intersection")
+                    console.log((intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                    console.log("Propagation")
+                    console.log(propagate(intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                    (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).iter((node) => {
+                        if (node instanceof VariableNode && this.leq(node.data, ret.lookup(node.label))) {
+                            ret = ret.update(node.label, node.data)
+                        }
+                    })
+                    return ret;
+                } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {
+                    if (bExpr.operator.type === TokenType.AND)
+                        return this._StateAbstractDomain.SetOperators.union(
+                    this.C(bExpr.leftOperand, aState),
+                    this.C(bExpr.leftOperand, aState)
+                )
+                if (bExpr.operator.type === TokenType.OR)
+                        return this._StateAbstractDomain.SetOperators.intersection(
+                            this.C(bExpr.leftOperand, aState),
+                            this.C(bExpr.leftOperand, aState)
+                        )
+                }
+                throw Error();
+            }
+            throw Error();
+        }
+        var prev = aState.clone(); 
+        var current = aState.clone();
+        do{
+            prev = Body(bExpr, current.clone());
+            current = Body(bExpr, prev.clone())
+        }while(!this._StateAbstractDomain.eq(prev, current))
+
+        console.log("Fixpoint found:", current.toString())
+        console.log("C function --------------------end");
+        console.log("\n");
+        return current.clone();
     };
     public S(expr: Statement, aState: AbstractProgramState<T>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<T> {
         let ret = aState.clone();

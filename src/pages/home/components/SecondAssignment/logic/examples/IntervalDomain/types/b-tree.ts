@@ -11,7 +11,7 @@ export abstract class BinaryTree<T> {
   // Implementing the iter function for tree traversal
   abstract iter(callback: (node: BinaryTree<T>) => void): void;
 
-  abstract toString(): string;
+  abstract toString(indent?: number): string;
 }
 
 export class LeafNode<T> extends BinaryTree<T> {
@@ -24,9 +24,9 @@ export class LeafNode<T> extends BinaryTree<T> {
     // Apply callback to the current node (LeafNode)
     callback(this);
   }
-  toString(): string {
-    return `(data:${this.data})`;
-  };
+  toString(indent: number = 0): string {
+    return `${' '.repeat(indent)}LeafNode(data: ${this.data})`;
+  }
 }
 
 export class VariableNode<T> extends LeafNode<T> {
@@ -54,9 +54,9 @@ export class VariableNode<T> extends LeafNode<T> {
     callback(this);
   }
 
-  toString(): string {
-    return `[label:${this._label}, data:${this.data}]`;
-  };
+  toString(indent: number = 0): string {
+    return `${' '.repeat(indent)}VariableNode(label: "${this._label}", data: ${this.data})`;
+  }
 }
 
 export class BinaryNode<T> extends BinaryTree<T> {
@@ -103,9 +103,12 @@ export class BinaryNode<T> extends BinaryTree<T> {
     // Traverse the right subtree
     this._right.iter(callback);
   }
-  toString(): string {
-    return `{{data:${this.data}, op:${this.operator} left:${this.left.toString()}, right: ${this.right.toString()}}}`;
-  };
+  toString(indent: number = 0): string {
+    const space = ' '.repeat(indent);
+    return `${space}BinaryNode(data: ${this.data}, operator: "${this._operator}")\n` +
+      `${space}├─ Left: \n${this._left.toString(indent + 2)}\n` +
+      `${space}└─ Right: \n${this._right.toString(indent + 2)}`;
+  }
 }
 
 export class UnaryNode<T> extends BinaryTree<T> {
@@ -131,7 +134,9 @@ export class UnaryNode<T> extends BinaryTree<T> {
     // Traverse the child subtree
     this._child.iter(callback);
   }
-  toString(): string {
-    return `{data:${this.data}, child:${this._child.toString()}}`;
+  toString(indent: number = 0): string {
+    const space = ' '.repeat(indent);
+    return `${space}UnaryNode(data: ${this.data})\n` +
+      `${space}└─ Child: \n${this._child.toString(indent + 2)}`;
   };
 }

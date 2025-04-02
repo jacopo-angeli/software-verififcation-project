@@ -64,11 +64,7 @@ export class BooleanBinaryOperator extends BooleanExpression {
         );
         break;
       case TokenType.MOREEQ:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")),
-          new Numeral(0),
-          new Token(TokenType.PLUS, "+")
-        );
+        this.leftOperand = new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-"));
         break;
       case TokenType.EQ:
         this.leftOperand = new BooleanBinaryOperator(
