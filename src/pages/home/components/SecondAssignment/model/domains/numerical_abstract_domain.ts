@@ -84,10 +84,10 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
 
         const propagate = (node: BinaryTree<T>): BinaryTree<T> => {
             if (node instanceof VariableNode) {
-                return new VariableNode<T>(node.data, node.label);
+                return node;
             }
             if (node instanceof LeafNode) {
-                return node.clone();
+                return node;
             }
             if (node instanceof UnaryNode) {
                 let ret = node.clone(node.data)

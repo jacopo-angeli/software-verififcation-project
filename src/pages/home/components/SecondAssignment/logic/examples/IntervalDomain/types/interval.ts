@@ -16,13 +16,15 @@ export class Interval extends AbstractValue {
     }
     public toString() {
         if(this._lower === this._meta.m && this._upper === this._meta.n) return "T";
-        return `[${this._lower === this._meta.m ? "-∞" : this._lower}, ${this._upper === this._meta.n ? "+∞" : this._upper}]`;
+        const l =  this._lower === this._meta.m ? "m" : this._lower === this._meta.n ? "n" : this._lower;
+        const u =  this._upper === this._meta.m ? "m" : this._upper === this._meta.n ? "n" : this._upper;
+        return `[${l}, ${u}]`;
     }
 }
 
 export class Bottom extends Interval {
     public toString() {
-        return "⊥ : " + super.toString();
+        return "⊥";
     }
 }
 export class Top extends Interval {

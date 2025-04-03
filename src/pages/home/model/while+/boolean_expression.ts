@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../token";
-import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, Numeral } from "./arithmetic_expression";
+import { ArithmeticBinaryOperator, ArithmeticExpression, Numeral } from "./arithmetic_expression";
 import { AST } from "./ast";
 
 export abstract class BooleanExpression extends AST {
@@ -129,26 +129,18 @@ export class BooleanBinaryOperator extends BooleanExpression {
   }
 
   negate(): BooleanExpression {
-    var negationMap = new Map([
-      [TokenType.LESS, { token: TokenType.MOREEQ, value: ">=" }],
-      [TokenType.LESSEQ, { token: TokenType.MORE, value: ">" }],
-      [TokenType.MORE, { token: TokenType.LESSEQ, value: "<=" }],
-      [TokenType.MOREEQ, { token: TokenType.LESS, value: "<" }],
-      [TokenType.EQ, { token: TokenType.INEQ, value: "!=" }],
-      [TokenType.INEQ, { token: TokenType.EQ, value: "==" }],
-    ]);
     this.eleq0();
-    if (this.operator.type === TokenType.LESSEQ)
-      return new BooleanBinaryOperator(
-        new ArithmeticUnaryOperator(
-          this.leftOperand,
-          new Token(TokenType.MINUS, "-")
-        ),
-        new Numeral(0),
-        new Token(TokenType.LESSEQ, "<=")
-      )
+    if (this.operator.type === TokenType.LESSEQ) {
+      let result = new BooleanBinaryOperator(
+        this.leftOperand,
+        this.rightOperand,
+        new Token(TokenType.MORE, ">")
+      );
+      result.eleq0();
+      return result;
+    }
 
-    negationMap = new Map([
+    const negationMap = new Map([
       [TokenType.AND, { token: TokenType.OR, value: "||" }],
       [TokenType.OR, { token: TokenType.AND, value: "&&" }]
     ]);
