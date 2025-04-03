@@ -18,10 +18,11 @@ export class IntervalFactory {
 
     public new(l: number, u: number): Interval {
         if (l > u) throw Error(`Interval creation: invalid bounds [${l}, ${u}]`);
+        if (l === this._meta.m && u === this._meta.n) return this.Top;
         return new Interval(Math.max(this._meta.m, l), Math.min(this._meta.n, u), this._meta);
     }
 
-    public get Top(): Interval { return new Top(this._meta.m, this._meta.n, this._meta); }
+    public get Top(): Interval { return new Top(this._meta); }
     public get Bottom(): Interval { return new Bottom(Number.NaN, Number.NaN, this._meta); }
 
     public getLessThan(max: number) {

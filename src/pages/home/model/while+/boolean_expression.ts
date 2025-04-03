@@ -50,11 +50,23 @@ export class BooleanBinaryOperator extends BooleanExpression {
         );
         break;
       case TokenType.LESS:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          new ArithmeticBinaryOperator(this.leftOperand, this.rightOperand, new Token(TokenType.MINUS, "-")),
-          new Numeral(1),
-          new Token(TokenType.PLUS, "+")
-        );
+        if (this.rightOperand instanceof Numeral && this.rightOperand.value === 0) {
+          this.leftOperand = new ArithmeticBinaryOperator(
+            this.leftOperand,
+            new Numeral(1),
+            new Token(TokenType.PLUS, "+")
+          );
+        } else {
+          this.leftOperand = new ArithmeticBinaryOperator(
+            new ArithmeticBinaryOperator(
+              this.leftOperand,
+              this.rightOperand,
+              new Token(TokenType.PLUS, "-")
+            ),
+            new Numeral(1),
+            new Token(TokenType.PLUS, "+")
+          );
+        }
         break;
       case TokenType.MORE:
         this.leftOperand = new ArithmeticBinaryOperator(

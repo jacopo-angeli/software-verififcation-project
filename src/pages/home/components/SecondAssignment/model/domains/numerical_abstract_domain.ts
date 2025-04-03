@@ -87,7 +87,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                 return new VariableNode<T>(node.data, node.label);
             }
             if (node instanceof LeafNode) {
-                return new LeafNode<T>(node.data);
+                return node.clone();
             }
             if (node instanceof UnaryNode) {
                 let ret = node.clone(node.data)
@@ -130,10 +130,12 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                     console.log("Propagation")
                     console.log(propagate(intersect(evaluate(bExpr.leftOperand, ret))).toString());
                     (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).iter((node) => {
-                        if (node instanceof VariableNode && this.leq(node.data, ret.lookup(node.label))) {
+                        if (node instanceof VariableNode) {
                             ret = ret.update(node.label, node.data)
                         }
                     })
+                    console.log("C function --------------------end");
+                    console.log("\n");
                     return ret;
                 } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {
                     if (bExpr.operator.type === TokenType.AND)
@@ -151,17 +153,15 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
             }
             throw Error();
         }
-        var prev = aState.clone(); 
-        var current = aState.clone();
-        do{
-            prev = Body(bExpr, current.clone());
-            current = Body(bExpr, prev.clone())
-        }while(!this._StateAbstractDomain.eq(prev, current))
+        // var prev = aState.clone(); 
+        // var current = aState.clone();
+        // do{
+        //     prev = Body(bExpr, current.clone());
+        //     current = Body(bExpr, prev.clone())
+        // }while(!this._StateAbstractDomain.eq(prev, current))
 
-        console.log("Fixpoint found:", current.toString())
-        console.log("C function --------------------end");
-        console.log("\n");
-        return current.clone();
+        // console.log("Fixpoint found:", current.toString())
+        return Body(bExpr, aState.clone());
     };
     public S(expr: Statement, aState: AbstractProgramState<T>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<T> {
         let ret = aState.clone();

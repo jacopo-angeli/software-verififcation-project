@@ -28,7 +28,6 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
 
     Operators = {
         minus: (x: Interval): Interval => {
-            console.log("check", x.lower, -x.lower)
             return this._IntervalFactory.new(-x.upper, -x.lower)
         },
         add: (x: Interval, y: Interval): Interval => {
@@ -71,7 +70,6 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             return this.SetOperators.intersection(x, this._IntervalFactory.getLessThanOrEqual(0));
         },
         minus: (x: Interval, y: Interval): Interval => {
-            console.log("check check", x.toString(), y.toString());
             return this.SetOperators.intersection(x, this.Operators.minus(y));
         },
         add: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
@@ -93,9 +91,10 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             }
         },
         divide: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
+            let s = this.Operators.add(r, this._IntervalFactory.new(-1, 1));
             return {
-                x: this.SetOperators.intersection(x, this.Operators.divide(r, y)),
-                y: this.SetOperators.intersection(y, this.Operators.divide(r, x)),
+                x: this.SetOperators.intersection(x, this.Operators.multiply(s, y)),
+                y: this.SetOperators.intersection(y, this.SetOperators.union(this.Operators.divide(x, s), this._IntervalFactory.new(0, 0))),
             }
         }
     };
@@ -118,6 +117,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         if (x instanceof Bottom) return y;
         const newLower = (x.lower <= y.lower) ? x.lower : Math.max(...(this.thresholds!.filter(x => x <= y.lower)), this._IntervalFactory.meta.m);
         const newUpper = (x.upper >= y.upper) ? x.upper : Math.min(...(this.thresholds!.filter(x => x >= y.upper)), this._IntervalFactory.meta.n);
+        console.log("Widening", x.toString(), y.toString(), "[", newLower, newUpper, "]", this.thresholds?.toString())
         return this._IntervalFactory.new(newLower, newUpper);
     };
     narrowing = (x: Interval, y: Interval): Interval => {
@@ -163,8 +163,6 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             };
         }
 
-
-        // TODO: Define an independent fall back definition overridable. 
         return {
             state: aState,
             value: super.E(expr, aState)
@@ -240,7 +238,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     do {
                         prevState = currentState.clone();
                         let u1 = prevState;
-                        let u2 = this.C(stmt.guard, currentState);
+                        let u2 = this.S(stmt.body, this.C(stmt.guard, currentState), flags);
                         currentState = this._StateAbstractDomain.SetOperators.intersection(
                             u1, u2
                         );
