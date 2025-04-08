@@ -1,7 +1,7 @@
 import { TokenType } from "../../../../model/token";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Variable } from "../../../../model/while+/arithmetic_expression";
 import { BooleanBinaryOperator, BooleanExpression } from "../../../../model/while+/boolean_expression";
-import { Statement } from "../../../../model/while+/statement";
+import { Assignment, Statement } from "../../../../model/while+/statement";
 import { BinaryNode, BinaryTree, LeafNode, UnaryNode, VariableNode } from "../../logic/examples/IntervalDomain/types/b-tree";
 import { AbstractProgramState } from "../types/abstract_state";
 import { AbstractValue } from "../types/abstract_value";
@@ -17,7 +17,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
     abstract Top: T;
 
     abstract Operators: {
-        minus: (X: T) => T;
+        negate: (X: T) => T;
         add: (X: T, Y: T) => T,
         subtract: (X: T, Y: T) => T,
         multiply: (X: T, Y: T) => T,
@@ -31,7 +31,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
 
     abstract BackwardOperators: {
         leqZero: (x: T) => T;
-        minus: (x: T, y: T) => T;
+        negate: (x: T, y: T) => T;
         add: (x: T, y: T, r: T) => { x: T, y: T, };
         subtract: (x: T, y: T, r: T) => { x: T, y: T, };
         multiply: (x: T, y: T, r: T) => { x: T, y: T, };
@@ -39,7 +39,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
     }
 
 
-    abstract widening: (x: T, y: T, options?: { tresholds?: Array<number>, },) => T
+    abstract widening: (x: T, y: T) => T
     abstract narrowing: (x: T, y: T) => T
 
 
@@ -49,6 +49,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
     };
     public C(bExpr: BooleanExpression, aState: AbstractProgramState<T>): AbstractProgramState<T> {
         console.log("C function -----------------------")
+        console.log(bExpr.toString())
 
         const evaluate = (aExpr: ArithmeticExpression, aState: AbstractProgramState<T>): BinaryTree<T> => {
 
@@ -85,37 +86,34 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
         const propagate = (node: BinaryTree<T>): BinaryTree<T> => {
             if (node instanceof VariableNode) {
                 return node;
-            }
-            if (node instanceof LeafNode) {
+            } else if (node instanceof LeafNode) {
                 return node;
-            }
-            if (node instanceof UnaryNode) {
+            } else if (node instanceof UnaryNode) {
                 let ret = node.clone(node.data)
-                ret.child = propagate(node.child.clone(this.BackwardOperators.minus(node.child.data, node.data)));
+                ret.child = propagate(node.child.clone(this.BackwardOperators.negate(node.child.data, node.data)));
                 return ret;
-            }
-            if (node instanceof BinaryNode) {
+            } else {
                 let aux;
-                switch (node.operator) {
+                let bNode = node as BinaryNode<T>;
+                switch ((bNode as BinaryNode<T>).operator) {
                     case "+":
-                        aux = this.BackwardOperators.add(node.left.data, node.right.data, node.data);
+                        aux = this.BackwardOperators.add(bNode.left.data, bNode.right.data, bNode.data);
                         break;
                     case "-":
-                        aux = this.BackwardOperators.subtract(node.left.data, node.right.data, node.data);
+                        aux = this.BackwardOperators.subtract(bNode.left.data, bNode.right.data, bNode.data);
                         break;
                     case "*":
-                        aux = this.BackwardOperators.multiply(node.left.data, node.right.data, node.data);
+                        aux = this.BackwardOperators.multiply(bNode.left.data, bNode.right.data, bNode.data);
                         break;
                     case "/":
-                        aux = this.BackwardOperators.divide(node.left.data, node.right.data, node.data);
+                        aux = this.BackwardOperators.divide(bNode.left.data, bNode.right.data, bNode.data);
                         break;
                 };
-                let ret = node.clone(node.data);
-                ret.left = propagate(node.left.clone(aux?.x));
-                ret.right = propagate(node.right.clone(aux?.y));
+                let ret = bNode.clone(bNode.data);
+                ret.left = propagate(bNode.left.clone(aux?.x));
+                ret.right = propagate(bNode.right.clone(aux?.y));
                 return ret;
             }
-            throw Error();
         }
 
 
@@ -140,10 +138,10 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                 } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {
                     if (bExpr.operator.type === TokenType.AND)
                         return this._StateAbstractDomain.SetOperators.union(
-                    this.C(bExpr.leftOperand, aState),
-                    this.C(bExpr.leftOperand, aState)
-                )
-                if (bExpr.operator.type === TokenType.OR)
+                            this.C(bExpr.leftOperand, aState),
+                            this.C(bExpr.leftOperand, aState)
+                        )
+                    if (bExpr.operator.type === TokenType.OR)
                         return this._StateAbstractDomain.SetOperators.intersection(
                             this.C(bExpr.leftOperand, aState),
                             this.C(bExpr.leftOperand, aState)
@@ -153,20 +151,16 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
             }
             throw Error();
         }
-        // var prev = aState.clone(); 
-        // var current = aState.clone();
-        // do{
-        //     prev = Body(bExpr, current.clone());
-        //     current = Body(bExpr, prev.clone())
-        // }while(!this._StateAbstractDomain.eq(prev, current))
 
-        // console.log("Fixpoint found:", current.toString())
         return Body(bExpr, aState.clone());
     };
     public S(expr: Statement, aState: AbstractProgramState<T>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<T> {
-        let ret = aState.clone();
-        ret.variables().forEach((v, i) => { ret.update(v, this.Top) });
-        return ret;
+        if (expr instanceof Assignment) {
+            let ret = aState.clone();
+            ret.update(expr.variable.name, this.Top)
+            return ret;
+        }
+        throw Error();
     };
 
 }

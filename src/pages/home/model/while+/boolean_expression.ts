@@ -48,6 +48,8 @@ export class BooleanBinaryOperator extends BooleanExpression {
           this.rightOperand,
           new Token(TokenType.MINUS, "-")
         );
+        this.rightOperand = new Numeral(0);
+        this.operator = new Token(TokenType.LESSEQ, "<=")
         break;
       case TokenType.LESS:
         if (this.rightOperand instanceof Numeral && this.rightOperand.value === 0) {
@@ -67,6 +69,8 @@ export class BooleanBinaryOperator extends BooleanExpression {
             new Token(TokenType.PLUS, "+")
           );
         }
+        this.rightOperand = new Numeral(0);
+        this.operator = new Token(TokenType.LESSEQ, "<=");
         break;
       case TokenType.MORE:
         this.leftOperand = new ArithmeticBinaryOperator(
@@ -74,26 +78,22 @@ export class BooleanBinaryOperator extends BooleanExpression {
           new Numeral(1),
           new Token(TokenType.PLUS, "+")
         );
+        this.rightOperand = new Numeral(0);
+        this.operator = new Token(TokenType.LESSEQ, "<=")
         break;
       case TokenType.MOREEQ:
         this.leftOperand = new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-"));
+        this.rightOperand = new Numeral(0);
+        this.operator = new Token(TokenType.LESSEQ, "<=")
         break;
       case TokenType.EQ:
         this.leftOperand = new BooleanBinaryOperator(
-          new ArithmeticBinaryOperator(
-            this.leftOperand,
-            this.rightOperand,
-            new Token(TokenType.MINUS, "-")
-          ),
+          new ArithmeticBinaryOperator(this.leftOperand,this.rightOperand,new Token(TokenType.MINUS, "-")),
           new Numeral(0),
           new Token(TokenType.LESSEQ, "<=")
         );
         this.rightOperand = new BooleanBinaryOperator(
-          new ArithmeticBinaryOperator(
-            new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")),
-            new Numeral(0),
-            new Token(TokenType.PLUS, "+")
-          ),
+          new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")),
           new Numeral(0),
           new Token(TokenType.LESSEQ, "<=")
         );
@@ -123,9 +123,6 @@ export class BooleanBinaryOperator extends BooleanExpression {
       default:
         throw new Error("BooleanBinaryOperator: Invalid operator type.");
     }
-
-    this.rightOperand = new Numeral(0);
-    this.operator = new Token(TokenType.LESSEQ, "<=")
   }
 
   negate(): BooleanExpression {
