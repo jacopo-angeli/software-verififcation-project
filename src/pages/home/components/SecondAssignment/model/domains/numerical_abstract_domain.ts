@@ -1,6 +1,6 @@
 import { TokenType } from "../../../../model/token";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Variable } from "../../../../model/while+/arithmetic_expression";
-import { BooleanBinaryOperator, BooleanExpression } from "../../../../model/while+/boolean_expression";
+import { BooleanBinaryOperator, BooleanExpression, Boolean } from "../../../../model/while+/boolean_expression";
 import { Assignment, Statement } from "../../../../model/while+/statement";
 import { BinaryNode, BinaryTree, LeafNode, UnaryNode, VariableNode } from "../../logic/examples/IntervalDomain/types/b-tree";
 import { AbstractProgramState } from "../types/abstract_state";
@@ -49,7 +49,7 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
     };
     public C(bExpr: BooleanExpression, aState: AbstractProgramState<T>): AbstractProgramState<T> {
         console.log("C function -----------------------")
-        console.log(bExpr.toString())
+        console.log("Input:", bExpr.toString(), ", ", aState.toString())
 
         const evaluate = (aExpr: ArithmeticExpression, aState: AbstractProgramState<T>): BinaryTree<T> => {
 
@@ -121,34 +121,39 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
             if (bExpr instanceof BooleanBinaryOperator) {
                 if (bExpr.left instanceof ArithmeticExpression && bExpr.right instanceof ArithmeticExpression) {
                     let ret = aState.clone();
-                    console.log("Evaluation");
-                    console.log((evaluate(bExpr.left, ret)).toString());
-                    console.log("Intersection")
-                    console.log((intersect(evaluate(bExpr.left, ret))).toString());
-                    console.log("Propagation")
-                    console.log(propagate(intersect(evaluate(bExpr.left, ret))).toString());
                     (propagate(intersect(evaluate(bExpr.left, ret)))).iter((node) => {
                         if (node instanceof VariableNode) {
                             ret = ret.update(node.label, node.data)
                         }
                     })
+                    console.log("Result: ", ret.toString())
                     console.log("C function --------------------end");
                     console.log("\n");
                     return ret;
                 } else if (bExpr.left instanceof BooleanExpression && bExpr.right instanceof BooleanExpression) {
-                    if (bExpr.operator.type === TokenType.AND)
-                        return this._StateAbstractDomain.SetOperators.union(
+                    if (bExpr.operator.type === TokenType.AND) {
+                        const ret = this._StateAbstractDomain.SetOperators.union(
                             this.C(bExpr.left, aState),
                             this.C(bExpr.right, aState)
                         )
-                    if (bExpr.operator.type === TokenType.OR)
-                        return this._StateAbstractDomain.SetOperators.intersection(
+                        console.log("Result: ", ret.toString())
+                        console.log("C function --------------------end");
+                        console.log("\n");
+                        return ret;
+                    }
+                    if (bExpr.operator.type === TokenType.OR) {
+                        const ret = this._StateAbstractDomain.SetOperators.intersection(
                             this.C(bExpr.left, aState),
                             this.C(bExpr.right, aState)
                         )
+                        console.log("Result: ", ret.toString())
+                        console.log("C function --------------------end");
+                        console.log("\n");
+                        return ret;
+                    }
                 }
                 throw Error();
-            }else if(bExpr instanceof Boolean){
+            } else if (bExpr instanceof Boolean) {
                 return bExpr.value ? aState.clone() : aState.toBottom();
             }
             throw Error();

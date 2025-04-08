@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Lexer } from "../../../logic/lexer";
 import { Parser } from "../../../logic/parser";
 import { Token } from "../../../model/token";
-import { Skip, Statement } from "../../../model/while+/statement";
 import { ProgramState } from "../model/program_state";
 
 import CodeEditor from "react-textarea-code-editor-2";
@@ -11,7 +10,6 @@ import "./FirstAssignment.css";
 import { InitialStateFormatError } from "../../../model/errors";
 import Latex from "react-latex-next";
 import Sds from "../logic/sds";
-import prettyPrintStatement from "../../../logic/pretty_printer";
 
 const FirstAssignment = () => {
 	var [initialState, setInitialState] = useState("");
@@ -23,7 +21,6 @@ const FirstAssignment = () => {
 
 	var [initialStateResult, setInitialStateResult] = useState(new ProgramState());
 	var [tokenList, setTokenList] = useState([] as Array<Token>);
-	var [programStatement, setProgramStatement] = useState(new Skip() as Statement);
 	var [evaluationResult, setEvaluationResult] = useState(new ProgramState());
 
 	const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -38,7 +35,6 @@ const FirstAssignment = () => {
 			let tokenListResult = Lexer.tokenize(program);
 			setTokenList(tokenListResult);
 			let ast = Parser.parse(tokenListResult);
-			setProgramStatement(ast);
 			let eR = Sds.eval(ast, initialStateResult, isNaN(iterationLimit) ? Number.POSITIVE_INFINITY : iterationLimit);
 			setEvaluationResult(eR);
 		} catch (error) {
@@ -50,94 +46,12 @@ const FirstAssignment = () => {
 			}
 		}
 	};
-	const _smokeExample = new Map<string, () => void>()
-		.set("Arithmetic", () => {
-			setInitialState("p=0; q=0; r=0;");
-			setProgram(`p = 3;
-q = p * 4 + 2;
-r = q - p`);
-		})
-		.set("Assignment", () => {
-			setInitialState("p=0; q=0; r=0;");
-			setProgram(`p = 3;
-q = p * 4 + 2;
-r = q - p`);
-		})
-		.set("Conditional", () => {
-			setInitialState("x=0;");
-			setProgram(`if (x > 5) then { x = x + 2 } else { x = x - 1 }`);
-		})
-		.set("While", () => {
-			setInitialState("y=0;");
-			setProgram(`while (y < 10) { y = y + 1 }`);
-		})
-		.set("For", () => {
-			setInitialState("a=1; b=0;");
-			setProgram(`for (b = 0; b < 3; b = b + 1) { a = a * 2 }`);
-		})
-		.set("Repeat-Until", () => {
-			setInitialState("c=0;");
-			setProgram(`repeat { c = c + 2 } until (c >= 10)`);
-		})
-		.set("Infinte-Loop", () => {
-			setInitialState("counter=0;");
-			setProgram(`while (counter >= 0) { counter = counter + 1 }`);
-		});
-
-	const _expandedExampleFirst = new Map<string, () => void>()
-		.set("GCD", () => {
-			setInitialState("a = 56;b = 98;temp=0;");
-			setProgram(`while (b != 0) {
-  temp = b;
-  b = a % b;
-  a = temp
-}`);
-		})
-		.set("Is Prime", () => {
-			setInitialState("x=0; number=5; result = 1;");
-			setProgram(`if(number<=1) then {
-  result = 0	
-} else {
-  for (x = 2; x < number && result == 1; x=x++){
-    if (number % x == 0) then {
-      result = 0
-    } else {
-      skip
-    }
-  }
-}`);
-		})
-		.set("Factorial", () => {
-			setInitialState("y=1;x=5;");
-			setProgram(`while(!(x==1)){
-  y=x*y;
-  x=x-1
-}`);
-		})
-		.set("Nth Fibonacci", () => {
-			setInitialState(`n=3; result=0; i=0; fibCurrent=1; fibPrev=0; fibNext=0;`);
-			setProgram(`if(n <= 1) then {
-  result = n
-} else {
-  if(result != n) then{
-   for(i = 2; i <= n; i=i++){
-    fibNext = fibPrev + fibCurrent;
-    fibPrev = fibCurrent;
-    fibCurrent = fibNext
-   };
-   result = fibCurrent
-  } else {
-    skip
-  }
-}`);
-		});
 
 	function _clearResult() {
 		setInitialState("");
 		setProgram("");
 		setInitialStateResult(new ProgramState());
 		setTokenList([] as Array<Token>);
-		setProgramStatement(new Skip());
 		setEvaluationResult(new ProgramState());
 		setInitialStateFormatError("");
 		setProgramFormatError("");
@@ -198,24 +112,6 @@ r = q - p`);
 							</Latex>
 						</p>
 					</div>
-				</div>
-				<h4>Examples</h4>
-				<div className="button-row"></div>
-				<h5>Smoke</h5>
-				<div className="button-row">
-					{Array.from(_smokeExample.keys()).map((e) => (
-						<button key={e} onClick={_smokeExample.get(e)}>
-							{e}
-						</button>
-					))}
-				</div>
-				<h5>Expanded</h5>
-				<div className="button-row">
-					{Array.from(_expandedExampleFirst.keys()).map((e) => (
-						<button key={e} onClick={_expandedExampleFirst.get(e)}>
-							{e}
-						</button>
-					))}
 				</div>
 				<h4>Input</h4>
 				<form onSubmit={submit}>
@@ -279,7 +175,6 @@ r = q - p`);
 						<h5>Input data</h5>
 						<pre aria-label="Initial state:">{initialStateResult.toString().replace(/ /g, "\u00A0")}</pre>
 						<p aria-label="Token list:">{tokenList.length > 0 ? tokenList.toString() : "[ ]"}</p>
-						<pre aria-label="AST:">{prettyPrintStatement(programStatement, 3)}</pre>
 						<h5>Output data</h5>
 						<p aria-label="Evaluation result:">{evaluationResult.toString()}</p>
 					</div>

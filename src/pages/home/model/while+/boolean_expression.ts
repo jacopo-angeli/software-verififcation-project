@@ -171,8 +171,8 @@ export class BooleanBinaryOperator extends BooleanExpression {
 
   iter(fn: (node: AST) => void): void {
     fn(this);
-    this.left instanceof BooleanExpression && this.left.iter(fn);
-    this.right instanceof BooleanExpression && this.right.iter(fn);
+    this.left.iter(fn);
+    this.right.iter(fn);
   }
 }
 

@@ -20,7 +20,7 @@ export class Assignment extends Statement {
     super();
   }
   public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}${this.variable.name}=${this.value}`;
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}${this.variable.name}=${this.value}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
   iter(fn: (node: AST) => void): void {
     fn(this);
@@ -107,7 +107,7 @@ export abstract class Loop extends Statement {
 
 export class WhileLoop extends Loop {
   public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}//${this.pre}\n${Statement.tab(level)}while(${this.guard.toString()}){\n${Statement.tab(level + 1)}//${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}//${this.post}`;
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}while(${this.guard.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
@@ -152,7 +152,7 @@ export class ForLoop extends Loop {
   ) { super(body, guard); }
 
   public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}${this.pre}\n${Statement.tab(level)}for(${this.initialStatement.annotatedProgram(0)};${this.guard.toString()};${this.incrementStatement.annotatedProgram(0)}){\n${Statement.tab(level + 1)}${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}${this.post}`;
+    return `${Statement.tab(level)}${this.pre}\n${Statement.tab(level)}for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${Statement.tab(level + 1)}${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
