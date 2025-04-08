@@ -1,4 +1,4 @@
-import { Bottom, Interval, Top } from "./interval";
+import { Interval } from "./interval";
 import { Set } from "./set";
 
 export class IntervalFactory {
@@ -28,11 +28,11 @@ export class IntervalFactory {
     public new(l: number, u: number): Interval {
         if (l > u) throw Error(`Interval creation: invalid bounds [${l}, ${u}]`);
         if (l === this._meta.m && u === this._meta.n) return this.Top;
-        return new Interval(this.clamp(l), Math.min(this._meta.n, u), this._meta);
+        return new Interval(this.clamp(l), this.clamp(u), this._meta);
     }
 
-    public get Top(): Interval { return new Top(this._meta); }
-    public get Bottom(): Interval { return new Bottom(Number.NaN, Number.NaN, this._meta); }
+    public get Top(): Interval { return new Interval(this._meta.m, this._meta.n, this._meta); }
+    public get Bottom(): Interval { return new Interval(Number.NaN, Number.NaN, this._meta); }
 
     public getLessThan(max: number) {
         return this.new(this._meta.m, max - 1);
@@ -47,7 +47,7 @@ export class IntervalFactory {
         return this.new(min, this._meta.n);
     }
     public intersect(i1: Interval, i2: Interval): Interval {
-        if (i1 instanceof Bottom || i2 instanceof Bottom) return this.Bottom;
+        if (i1.isBottom() || i2.isBottom()) return this.Bottom;
         const l = Math.max(i1.lower, i2.lower);
         const u = Math.min(i1.upper, i2.upper);
         if (l <= u) return this.new(l, u);
@@ -59,23 +59,23 @@ export class IntervalFactory {
         return this.new(l, u);
     }
     public Operators = {
-        minus: (x: Interval): Interval => {
+        negate: (x: Interval): Interval => {
             return this.new(-x.upper, -x.lower)
         },
         add: (x: Interval, y: Interval): Interval => {
-            if (x instanceof Bottom || y instanceof Bottom) return this.Bottom;
+            if (x.isBottom() || y.isBottom()) return this.Bottom;
             const l = x.lower + y.lower;
             const u = x.upper + y.upper;
             return this.new(l, u);
         },
         subtract: (x: Interval, y: Interval): Interval => {
-            if (x instanceof Bottom || y instanceof Bottom) return this.Bottom;
+            if (x.isBottom() || y.isBottom()) return this.Bottom;
             const l = x.lower - y.upper;
             const u = x.upper - y.lower;
             return this.new(l, u);
         },
         multiply: (x: Interval, y: Interval): Interval => {
-            if (x instanceof Bottom || y instanceof Bottom) return this.Bottom;
+            if (x.isBottom() || y.isBottom()) return this.Bottom;
             const products: Array<number> = [
                 x.lower * y.lower, x.lower * y.upper,
                 x.upper * y.lower, x.upper * y.upper
@@ -83,7 +83,7 @@ export class IntervalFactory {
             return this.new(Math.min(...products), Math.max(...products));
         },
         divide: (x: Interval, y: Interval): Interval => {
-            if (x instanceof Bottom || y instanceof Bottom) return this.Bottom;
+            if (x.isBottom() || y.isBottom()) return this.Bottom;
             if (1 <= y.lower) {
                 const l = Math.min(x.lower / y.lower, x.lower / y.upper);
                 const u = Math.max(x.upper / y.lower, x.upper / y.upper)

@@ -72,8 +72,8 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         leqZero: (x: Interval): Interval => {
             return this.SetOperators.intersection(x, this._IntervalFactory.getLessThanOrEqual(0));
         },
-        minus: (x: Interval, y: Interval): Interval => {
-            return this.SetOperators.intersection(x, this.Operators.minus(y));
+        negate: (x: Interval, y: Interval): Interval => {
+            return this.SetOperators.intersection(x, this.Operators.negate(y));
         },
         add: (x: Interval, y: Interval, r: Interval): { x: Interval; y: Interval; } => {
             return {
@@ -244,13 +244,13 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 if (flags.narrowing) {
                     do {
                         prevState = currentState.clone();
-                        let u1 = prevState;
-                        let u2 = this.S(stmt.body, this.C(stmt.guard, currentState), flags);
-                        currentState = this._StateAbstractDomain.SetOperators.intersection(
-                            u1, u2
-                        );
-                        console.log("Intersection between", u1.toString(), " and ", u2.toString(), " resulted in ", currentState.toString())
-                        currentState = this._StateAbstractDomain.narrowing(prevState, currentState);
+                        currentState = this._StateAbstractDomain.narrowing(
+                            prevState,
+                            this._StateAbstractDomain.SetOperators.intersection(
+                                prevState,
+                                this.S(stmt.body, this.C(stmt.guard, currentState), flags),
+                            )
+                        )
                         console.log("After narrowing:", currentState.toString())
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
                     stmt.inv = currentState.toString();
@@ -334,7 +334,14 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     );
                     if (flags.narrowing) currentState = this._StateAbstractDomain.widening(prevState, currentState);
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                stmt.inv = (currentState.toString());
+
+                stmt.inv = currentState.toString();
+                console.log("Fixpoint found:", currentState.toString())
+                console.log("\n")
+                console.log("Fixpoint ------------------------------end")
+                console.log("\n")
+                console.log("Narrowing --------------------------------")
+                console.log("\n")
                 if (flags.narrowing) {
                     prevState = aState.clone();
                     do {

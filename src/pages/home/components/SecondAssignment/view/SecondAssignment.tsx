@@ -6,7 +6,6 @@ import CodeEditor from "react-textarea-code-editor-2";
 import "./SecondAssignment.css";
 import { InitialStateFormatError, ProgramFormatError } from "../../../model/errors";
 import { AI_INT } from "../logic/program";
-import prettyPrintStatement from "../../../logic/pretty_printer";
 
 const SecondAssignment = () => {
 	const [formFields, setFormFields] = useState({
@@ -40,7 +39,6 @@ const SecondAssignment = () => {
 			...prevState,
 			abstractProgramState: "In progress",
 			tokenList: "In progress",
-			ast: "In progress",
 			denotationaSemantic: "In progress",
 			dSharpResult: "In progress",
 		}));
@@ -52,7 +50,6 @@ const SecondAssignment = () => {
 				...prevState,
 				abstractProgramState:  CurrentRun.initialState.toString(),
 				tokenList: CurrentRun.tokenList.toString(),
-				// ast: prettyPrintStatement(CurrentRun.ast),
 				dSharpResult: CurrentRun.dSharpResult.toString(),
 				annotatedProgram: CurrentRun.annotatedProgram.replace(/(\\n)/g, "\n"),
 			}));
@@ -394,7 +391,6 @@ r = q - p`,
 						<h5>Input data</h5>
 						<p aria-label="Initial state:">{results.abstractProgramState.replace(/ /g, "\u00A0")}</p>
 						<p aria-label="Token list:">{results.tokenList.length > 0 ? results.tokenList : "[ ]"}</p>
-						<pre aria-label="Ast:">{results.ast}</pre>
 						<h5>Output data</h5>
 						<pre aria-label="Annotated program:">{results.annotatedProgram}</pre>
 						<p aria-label="Evaluation result:">{results.dSharpResult}</p>

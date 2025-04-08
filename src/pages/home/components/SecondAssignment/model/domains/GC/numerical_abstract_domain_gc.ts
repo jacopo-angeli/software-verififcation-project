@@ -16,5 +16,5 @@ export abstract class NumericalAbstractDomainGC<T extends AbstractValue> extends
     // * represents P(I), where I = {Z, Q, R}, and use it as x type in alpha *
     // * to achieve the best possible abstraction.                           *
     // * However, this is entirely beyond the project's scope.               *
-    abstract alpha: (x: any) => T;
+    abstract alpha(x: any):T;
 }

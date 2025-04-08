@@ -1,1 +1,5 @@
-export abstract class AbstractValue {}
+
+export abstract class AbstractValue {
+    abstract isTop() : boolean;
+    abstract isBottom() : boolean;
+}

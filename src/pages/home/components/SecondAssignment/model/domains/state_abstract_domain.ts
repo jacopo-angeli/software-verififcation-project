@@ -7,18 +7,19 @@ export class StateAbstractDomain<T extends AbstractValue> {
     constructor(protected _NumericalAbstractDomain: NumericalAbstractDomain<T>) { }
 
     public leq(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): boolean {
-        // * A possible improvement could be defining a sort of global instance V   *
-        // * where to put all the program variable. Maybe merging the initial state *
-        // * input into the program input where every status update is a sort of    *
-        // * variable instantiation.                                                *
-        // * The implementation soundness depends, since every variable in X are in *
-        // * V, on the underlying operator leq' one                                 *
         return X.isBottom() ||
             (
                 !X.isBottom() &&
                 !Y.isBottom() &&
                 X.variables().reduce((acc, x) => {
-                    return acc && (!Y.variables().includes(x) || (Y.variables().includes(x) && this._NumericalAbstractDomain.leq(X.lookup(x), Y.lookup(x))));
+                    return acc &&
+                        (
+                            !Y.variables().includes(x) ||
+                            (
+                                Y.variables().includes(x) &&
+                                this._NumericalAbstractDomain.leq(X.lookup(x), Y.lookup(x))
+                            )
+                        );
                 }, true)
             );
     }
@@ -26,7 +27,7 @@ export class StateAbstractDomain<T extends AbstractValue> {
     public eq(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): boolean {
         return this.leq(X, Y) && this.leq(Y, X);
     }
-
+    
     public widening(X: AbstractProgramState<T>, Y: AbstractProgramState<T>): AbstractProgramState<T> {
         if (X.isBottom()) return Y;
         if (Y.isBottom()) return X;
@@ -38,7 +39,7 @@ export class StateAbstractDomain<T extends AbstractValue> {
         if (Y.isBottom()) return X;
         let ret = this.merge(X, Y, (x, y) => x && y ? this._NumericalAbstractDomain.narrowing(x, y) as T : (x ?? y)!);
         return ret
-    }    
+    }
 
     public SetOperators = {
         union: (X: AbstractProgramState<T>, Y: AbstractProgramState<T>) => {
