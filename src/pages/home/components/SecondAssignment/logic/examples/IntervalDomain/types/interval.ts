@@ -1,4 +1,4 @@
-import { AbstractValue } from "../../../../model/types/abstract_value";
+import { AbstractValue, BottomValue, TopValue } from "../../../../model/types/abstract_value";
 
 export class Interval extends AbstractValue {
     constructor(
@@ -22,15 +22,15 @@ export class Interval extends AbstractValue {
     }
 }
 
-export class Bottom extends Interval {
+export class Bottom extends BottomValue {
     public toString() {
         return "⊥";
     }
 }
-export class Top extends Interval {
+export class Top extends TopValue {
     constructor(
-        meta: { m: number, n: number }
-    ) { super(meta.m, meta.n, meta); };
+        
+    ) {  };
     public toString() {
         return "T";
     }

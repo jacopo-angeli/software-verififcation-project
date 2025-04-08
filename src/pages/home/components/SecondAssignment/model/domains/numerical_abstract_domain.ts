@@ -1,6 +1,6 @@
 import { TokenType } from "../../../../model/token";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Variable } from "../../../../model/while+/arithmetic_expression";
-import { BooleanBinaryOperator, BooleanExpression } from "../../../../model/while+/boolean_expression";
+import { Boolean, BooleanBinaryOperator, BooleanExpression } from "../../../../model/while+/boolean_expression";
 import { Statement } from "../../../../model/while+/statement";
 import { BinaryNode, BinaryTree, LeafNode, UnaryNode, VariableNode } from "../../logic/examples/IntervalDomain/types/b-tree";
 import { AbstractProgramState } from "../types/abstract_state";
@@ -121,15 +121,15 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
 
         const Body = (bExpr: BooleanExpression, aState: AbstractProgramState<T>): AbstractProgramState<T> => {
             if (bExpr instanceof BooleanBinaryOperator) {
-                if (bExpr.leftOperand instanceof ArithmeticExpression && bExpr.rightOperand instanceof ArithmeticExpression) {
+                if (bExpr.left instanceof ArithmeticExpression && bExpr.right instanceof ArithmeticExpression) {
                     let ret = aState.clone();
                     console.log("Evaluation");
-                    console.log((evaluate(bExpr.leftOperand, ret)).toString());
+                    console.log((evaluate(bExpr.left, ret)).toString());
                     console.log("Intersection")
-                    console.log((intersect(evaluate(bExpr.leftOperand, ret))).toString());
+                    console.log((intersect(evaluate(bExpr.left, ret))).toString());
                     console.log("Propagation")
-                    console.log(propagate(intersect(evaluate(bExpr.leftOperand, ret))).toString());
-                    (propagate(intersect(evaluate(bExpr.leftOperand, ret)))).iter((node) => {
+                    console.log(propagate(intersect(evaluate(bExpr.left, ret))).toString());
+                    (propagate(intersect(evaluate(bExpr.left, ret)))).iter((node) => {
                         if (node instanceof VariableNode) {
                             ret = ret.update(node.label, node.data)
                         }
@@ -137,19 +137,21 @@ export abstract class NumericalAbstractDomain<T extends AbstractValue> {
                     console.log("C function --------------------end");
                     console.log("\n");
                     return ret;
-                } else if (bExpr.leftOperand instanceof BooleanExpression && bExpr.rightOperand instanceof BooleanExpression) {
+                } else if (bExpr.left instanceof BooleanExpression && bExpr.right instanceof BooleanExpression) {
                     if (bExpr.operator.type === TokenType.AND)
                         return this._StateAbstractDomain.SetOperators.union(
-                    this.C(bExpr.leftOperand, aState),
-                    this.C(bExpr.leftOperand, aState)
+                    this.C(bExpr.left, aState),
+                    this.C(bExpr.left, aState)
                 )
                 if (bExpr.operator.type === TokenType.OR)
                         return this._StateAbstractDomain.SetOperators.intersection(
-                            this.C(bExpr.leftOperand, aState),
-                            this.C(bExpr.leftOperand, aState)
+                            this.C(bExpr.left, aState),
+                            this.C(bExpr.left, aState)
                         )
                 }
                 throw Error();
+            }else if(bExpr instanceof Boolean){
+                return bExpr.value ? aState.clone() : aState.toBottom();
             }
             throw Error();
         }

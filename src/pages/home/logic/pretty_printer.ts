@@ -32,9 +32,9 @@ function prettyPrintBoolean(expr: BooleanExpression, level: number = 0): string 
     return `${indent(level)}Boolean: ${expr.value}`;
   } else if (expr instanceof BooleanBinaryOperator) {
     if (expr.concatenation()) {
-      return `${indent(level)}BinaryOperator: ${expr.operator.value}\n${prettyPrintExpr(expr.leftOperand as ArithmeticExpression, level + 1)}\n${prettyPrintExpr(expr.rightOperand as ArithmeticExpression, level + 1)}`;
+      return `${indent(level)}BinaryOperator: ${expr.operator.value}\n${prettyPrintExpr(expr.left as ArithmeticExpression, level + 1)}\n${prettyPrintExpr(expr.right as ArithmeticExpression, level + 1)}`;
     } else {
-      return `${indent(level)}BooleanConcatenation: ${expr.operator.value}\n${prettyPrintBoolean(expr.leftOperand as BooleanExpression, level + 1)}\n${prettyPrintBoolean(expr.rightOperand as BooleanExpression, level + 1)}`;
+      return `${indent(level)}BooleanConcatenation: ${expr.operator.value}\n${prettyPrintBoolean(expr.left as BooleanExpression, level + 1)}\n${prettyPrintBoolean(expr.right as BooleanExpression, level + 1)}`;
     }
   } else if (expr instanceof BooleanUnaryOperator) {
     return `${indent(level)}UnaryOperation: ${expr.operator.value}\n${prettyPrintBoolean(expr.booleanExpression, level + 1)}`;

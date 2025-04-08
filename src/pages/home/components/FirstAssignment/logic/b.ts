@@ -5,17 +5,17 @@ class B {
     static eval(expr: BooleanExpression, state: ProgramState): { state: ProgramState, value: boolean } {
         if (expr instanceof BooleanBinaryOperator) {
             if (expr.concatenation()) {
-                let returnState: ProgramState = B.eval(expr.rightOperand as BooleanExpression, B.eval(expr.leftOperand as BooleanExpression, state).state).state;
+                let returnState: ProgramState = B.eval(expr.right as BooleanExpression, B.eval(expr.left as BooleanExpression, state).state).state;
                 switch (expr.operator.value) {
                     case "&&":
                         return {
                             state: returnState,
-                            value: B.eval(expr.leftOperand as BooleanExpression, state).value && B.eval(expr.rightOperand as BooleanExpression, B.eval(expr.leftOperand as BooleanExpression, state).state).value
+                            value: B.eval(expr.left as BooleanExpression, state).value && B.eval(expr.right as BooleanExpression, B.eval(expr.left as BooleanExpression, state).state).value
                         }
                     case "||":
                         return {
                             state: returnState,
-                            value: B.eval(expr.leftOperand as BooleanExpression, state).value || B.eval(expr.rightOperand as BooleanExpression, B.eval(expr.leftOperand as BooleanExpression, state).state).value
+                            value: B.eval(expr.left as BooleanExpression, state).value || B.eval(expr.right as BooleanExpression, B.eval(expr.left as BooleanExpression, state).state).value
                         }
                     default:
                         throw Error(`Unknown boolean concatenation : ${expr.operator.value}.`);
@@ -23,37 +23,37 @@ class B {
             }
             else {
 
-                let returnState: ProgramState = A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).state;
+                let returnState: ProgramState = A.eval(expr.right, A.eval(expr.left, state.copy()).state).state;
                 switch (expr.operator.value) {
                     case "==":
                         return {
                             state: returnState,
-                            value: A.eval(expr.leftOperand, state).value === A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).value
+                            value: A.eval(expr.left, state).value === A.eval(expr.right, A.eval(expr.left, state.copy()).state).value
                         }
                     case "!=":
                         return {
                             state: returnState,
-                            value: A.eval(expr.leftOperand, state).value !== A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).value
+                            value: A.eval(expr.left, state).value !== A.eval(expr.right, A.eval(expr.left, state.copy()).state).value
                         }
                     case "<":
                         return {
                             state: returnState,
-                            value: A.eval(expr.leftOperand, state).value < A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).value
+                            value: A.eval(expr.left, state).value < A.eval(expr.right, A.eval(expr.left, state.copy()).state).value
                         }
                     case "<=":
                         return {
                             state: returnState,
-                            value: A.eval(expr.leftOperand, state).value <= A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).value
+                            value: A.eval(expr.left, state).value <= A.eval(expr.right, A.eval(expr.left, state.copy()).state).value
                         }
                     case ">":
                         return {
                             state: returnState,
-                            value: A.eval(expr.leftOperand, state).value > A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).value
+                            value: A.eval(expr.left, state).value > A.eval(expr.right, A.eval(expr.left, state.copy()).state).value
                         }
                     case ">=":
                         return {
                             state: returnState,
-                            value: A.eval(expr.leftOperand, state).value >= A.eval(expr.rightOperand, A.eval(expr.leftOperand, state.copy()).state).value
+                            value: A.eval(expr.left, state).value >= A.eval(expr.right, A.eval(expr.left, state.copy()).state).value
                         }
                     default:
                         throw Error(`Illegal boolean binary operator : ${expr.operator.value}.`);

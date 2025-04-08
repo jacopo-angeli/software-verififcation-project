@@ -12,55 +12,55 @@ export abstract class BooleanExpression extends AST {
  */
 export class BooleanBinaryOperator extends BooleanExpression {
   constructor(
-    public leftOperand: ArithmeticExpression | BooleanExpression,
-    public rightOperand: ArithmeticExpression | BooleanExpression,
+    public left: ArithmeticExpression | BooleanExpression,
+    public right: ArithmeticExpression | BooleanExpression,
     public operator: Token
   ) {
     super();
     if ([TokenType.AND, TokenType.OR].includes(operator.type)) {
-      if (!(leftOperand instanceof BooleanExpression && rightOperand instanceof BooleanExpression)) {
-        throw Error(`BooleanBinaryOperator construction constraints violated (${leftOperand},${rightOperand}, ${operator})`)
+      if (!(left instanceof BooleanExpression && right instanceof BooleanExpression)) {
+        throw Error(`BooleanBinaryOperator construction constraints violated (${left},${right}, ${operator})`)
       }
     } else {
-      if (leftOperand instanceof BooleanExpression || rightOperand instanceof BooleanExpression) {
-        throw Error(`BooleanBinaryOperator construction constraints violated (${leftOperand},${rightOperand}, ${operator})`)
+      if (left instanceof BooleanExpression || right instanceof BooleanExpression) {
+        throw Error(`BooleanBinaryOperator construction constraints violated (${left},${right}, ${operator})`)
       }
     }
   }
   public concatenation(): boolean {
-    return this.leftOperand instanceof BooleanExpression && this.rightOperand instanceof BooleanExpression;
+    return this.left instanceof BooleanExpression && this.right instanceof BooleanExpression;
   }
   eleq0(): void {
     const eleqForm = (expr: BooleanBinaryOperator): boolean => {
-      return expr.leftOperand instanceof ArithmeticExpression && expr.rightOperand instanceof Numeral && expr.rightOperand.value === 0 && expr.operator.type === TokenType.LESSEQ;
+      return expr.left instanceof ArithmeticExpression && expr.right instanceof Numeral && expr.right.value === 0 && expr.operator.type === TokenType.LESSEQ;
     }
     if (eleqForm(this)) {
-      if (this.leftOperand instanceof BooleanExpression && this.rightOperand instanceof BooleanExpression) {
-        this.leftOperand.eleq0()
-        this.rightOperand.eleq0()
+      if (this.left instanceof BooleanExpression && this.right instanceof BooleanExpression) {
+        this.left.eleq0()
+        this.right.eleq0()
       }
       return;
     }
     switch (this.operator.type) {
       case TokenType.LESSEQ:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          this.leftOperand,
-          this.rightOperand,
+        this.left = new ArithmeticBinaryOperator(
+          this.left,
+          this.right,
           new Token(TokenType.MINUS, "-")
         );
         break;
       case TokenType.LESS:
-        if (this.rightOperand instanceof Numeral && this.rightOperand.value === 0) {
-          this.leftOperand = new ArithmeticBinaryOperator(
-            this.leftOperand,
+        if (this.right instanceof Numeral && this.right.value === 0) {
+          this.left = new ArithmeticBinaryOperator(
+            this.left,
             new Numeral(1),
             new Token(TokenType.PLUS, "+")
           );
         } else {
-          this.leftOperand = new ArithmeticBinaryOperator(
+          this.left = new ArithmeticBinaryOperator(
             new ArithmeticBinaryOperator(
-              this.leftOperand,
-              this.rightOperand,
+              this.left,
+              this.right,
               new Token(TokenType.PLUS, "-")
             ),
             new Numeral(1),
@@ -69,28 +69,28 @@ export class BooleanBinaryOperator extends BooleanExpression {
         }
         break;
       case TokenType.MORE:
-        this.leftOperand = new ArithmeticBinaryOperator(
-          new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")),
+        this.left = new ArithmeticBinaryOperator(
+          new ArithmeticBinaryOperator(this.right, this.left, new Token(TokenType.MINUS, "-")),
           new Numeral(1),
           new Token(TokenType.PLUS, "+")
         );
         break;
       case TokenType.MOREEQ:
-        this.leftOperand = new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-"));
+        this.left = new ArithmeticBinaryOperator(this.right, this.left, new Token(TokenType.MINUS, "-"));
         break;
       case TokenType.EQ:
-        this.leftOperand = new BooleanBinaryOperator(
+        this.left = new BooleanBinaryOperator(
           new ArithmeticBinaryOperator(
-            this.leftOperand,
-            this.rightOperand,
+            this.left,
+            this.right,
             new Token(TokenType.MINUS, "-")
           ),
           new Numeral(0),
           new Token(TokenType.LESSEQ, "<=")
         );
-        this.rightOperand = new BooleanBinaryOperator(
+        this.right = new BooleanBinaryOperator(
           new ArithmeticBinaryOperator(
-            new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")),
+            new ArithmeticBinaryOperator(this.right, this.left, new Token(TokenType.MINUS, "-")),
             new Numeral(0),
             new Token(TokenType.PLUS, "+")
           ),
@@ -100,18 +100,18 @@ export class BooleanBinaryOperator extends BooleanExpression {
         this.operator = new Token(TokenType.AND, "&&");
         break;
       case TokenType.INEQ:
-        this.leftOperand = new BooleanBinaryOperator(
+        this.left = new BooleanBinaryOperator(
           new ArithmeticBinaryOperator(
-            new ArithmeticBinaryOperator(this.rightOperand, this.leftOperand, new Token(TokenType.MINUS, "-")),
+            new ArithmeticBinaryOperator(this.right, this.left, new Token(TokenType.MINUS, "-")),
             new Numeral(1),
             new Token(TokenType.PLUS, "+")
           ),
           new Numeral(0),
           new Token(TokenType.LESSEQ, "<=")
         );
-        this.rightOperand = new BooleanBinaryOperator(
+        this.right = new BooleanBinaryOperator(
           new ArithmeticBinaryOperator(
-            new ArithmeticBinaryOperator(this.leftOperand, this.rightOperand, new Token(TokenType.MINUS, "-")),
+            new ArithmeticBinaryOperator(this.left, this.right, new Token(TokenType.MINUS, "-")),
             new Numeral(1),
             new Token(TokenType.PLUS, "+")
           ),
@@ -124,7 +124,7 @@ export class BooleanBinaryOperator extends BooleanExpression {
         throw new Error("BooleanBinaryOperator: Invalid operator type.");
     }
 
-    this.rightOperand = new Numeral(0);
+    this.right = new Numeral(0);
     this.operator = new Token(TokenType.LESSEQ, "<=")
   }
 
@@ -132,8 +132,8 @@ export class BooleanBinaryOperator extends BooleanExpression {
     this.eleq0();
     if (this.operator.type === TokenType.LESSEQ) {
       let result = new BooleanBinaryOperator(
-        this.leftOperand,
-        this.rightOperand,
+        this.left,
+        this.right,
         new Token(TokenType.MORE, ">")
       );
       result.eleq0();
@@ -146,7 +146,7 @@ export class BooleanBinaryOperator extends BooleanExpression {
     ]);
 
     if (negationMap.has(this.operator.type)) {
-      let ret = new BooleanBinaryOperator((this.leftOperand as BooleanExpression).negate(), (this.rightOperand as BooleanExpression).negate(), new Token(negationMap.get(this.operator.type)?.token as TokenType, negationMap.get(this.operator.type)?.value as string));
+      let ret = new BooleanBinaryOperator((this.left as BooleanExpression).negate(), (this.right as BooleanExpression).negate(), new Token(negationMap.get(this.operator.type)?.token as TokenType, negationMap.get(this.operator.type)?.value as string));
       return ret;
     }
 
@@ -154,19 +154,19 @@ export class BooleanBinaryOperator extends BooleanExpression {
   }
 
   toString(): string {
-    return `${this.leftOperand.toString()} ${this.operator.value} ${this.rightOperand.toString()}`;
+    return `${this.left.toString()} ${this.operator.value} ${this.right.toString()}`;
   }
 
   map(fn: (node: AST) => AST): AST {
     return fn(
-      new BooleanBinaryOperator(this.leftOperand, this.rightOperand, this.operator)
+      new BooleanBinaryOperator(this.left, this.right, this.operator)
     );
   }
 
   iter(fn: (node: AST) => void): void {
     fn(this);
-    this.leftOperand instanceof BooleanExpression && this.leftOperand.iter(fn);
-    this.rightOperand instanceof BooleanExpression && this.rightOperand.iter(fn);
+    this.left instanceof BooleanExpression && this.left.iter(fn);
+    this.right instanceof BooleanExpression && this.right.iter(fn);
   }
 }
 

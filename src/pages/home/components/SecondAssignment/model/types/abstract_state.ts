@@ -1,4 +1,4 @@
-import { AbstractValue, BottomValue, TopValue } from "./abstract_value";
+import { AbstractValue } from "./abstract_value";
 
 export class AbstractProgramState<T extends AbstractValue> {
     constructor(
@@ -24,11 +24,21 @@ export class AbstractProgramState<T extends AbstractValue> {
 
     isBottom(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc || (this._state.get(k as string) instanceof BottomValue)}, false); }
     isTop(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc && (this._state.get(k as string) instanceof TopValue) }, true); }
-
+    toBottom(): AbstractProgramState<T>{
+        let ret =  new Map<string, T>();
+        Array.from(this._state.keys()).forEach(e => ret.set(e, this.lookup(e)));
+        return new AbstractProgramState<T>(ret);
+    }
+    toTop(): AbstractProgramState<T>{
+        let ret =  new Map<string, T>();
+        Array.from(this._state.keys()).forEach(e => ret.set(e, )));
+        return new AbstractProgramState<T>(ret);
+    }
     
     variables(): Array<string> {
         return Array.from(this._state.keys());
     };
+
 
     // ---------------------------------------------------------------------------------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------------------------------------------------------------------------------

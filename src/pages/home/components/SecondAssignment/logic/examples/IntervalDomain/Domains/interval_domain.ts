@@ -16,17 +16,57 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         if (x instanceof EmptySet) return this.Bottom;
         return this._IntervalFactory.fromSet(x);
     };
+
     leq = (x: Interval, y: Interval): boolean => {
         return x.lower >= y.lower && x.upper <= y.upper;
     };
+
     gamma = (x: Interval | Bottom): ConcreteValue => {
         if (x instanceof Bottom) return new EmptySet();
         return new Set(x.lower, x.upper);
     };
+
     Bottom: Interval = this._IntervalFactory.Bottom;
     Top: Interval = this._IntervalFactory.Top;
 
-    Operators = this._IntervalFactory.Operators;
+    Operators = {
+        minus: (x: Interval): Interval => {
+            return this._IntervalFactory.new(-x.upper, -x.lower)
+        },
+        add: (x: Interval, y: Interval): Interval => {
+            if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
+            return this._IntervalFactory.new(x.lower === this._IntervalFactory.meta.m ? this._IntervalFactory.meta.m : x.lower + y.lower, x.upper === this._IntervalFactory.meta.n ? this._IntervalFactory.meta.n : x.upper + y.upper)
+        },
+        subtract: (x: Interval, y: Interval): Interval => {
+            if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
+            return this._IntervalFactory.new(x.lower === this._IntervalFactory.meta.m ? this._IntervalFactory.meta.m : x.lower - y.upper, x.upper === this._IntervalFactory.meta.n ? this._IntervalFactory.meta.n : x.upper - y.lower)
+        },
+        multiply: (x: Interval, y: Interval): Interval => {
+            if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
+            let products: Array<number> = [
+                x.lower * y.lower, x.lower * y.upper,
+                x.upper * y.lower, x.upper * y.upper
+            ];
+            return this._IntervalFactory.new(Math.min(...products), Math.max(...products));
+        },
+        divide: (x: Interval, y: Interval): Interval => {
+            if (x instanceof Bottom || y instanceof Bottom) return this._IntervalFactory.Bottom;
+            if (1 <= y.lower)
+                return this._IntervalFactory.new(
+                    Math.min(x.lower / y.lower, x.lower / y.upper),
+                    Math.max(x.upper / y.lower, x.upper / y.upper)
+                );
+            if (y.upper <= -1)
+                return this._IntervalFactory.new(
+                    Math.min(x.upper / y.lower, x.upper / y.upper),
+                    Math.max(x.lower / y.lower, x.lower / y.upper)
+                );
+            return this._IntervalFactory.union(
+                this.Operators.divide(x, this._IntervalFactory.intersect(y, this._IntervalFactory.getMoreThan(0))),
+                this.Operators.divide(x, this._IntervalFactory.intersect(y, this._IntervalFactory.getLessThan(0)))
+            )
+        },
+    };
 
     BackwardOperators = {
         leqZero: (x: Interval): Interval => {
@@ -70,12 +110,13 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         },
         intersection: (x: Interval, y: Interval): Interval => {
             if (x instanceof Bottom || y instanceof Bottom) return this.Bottom;
-            const lower = Math.max(x.lower, y.lower);
-            const upper = Math.min(x.upper, y.upper);
+            const lower = Math.min(x.lower, y.lower);
+            const upper = Math.max(x.upper, y.upper);
             if (lower <= upper) return this._IntervalFactory.new(lower, upper);
             else return this.Bottom;
         },
     };
+
     widening = (x: Interval, y: Interval): Interval => {
         if (x instanceof Bottom) return y;
         const newLower = (x.lower <= y.lower) ? x.lower : Math.max(...(this.thresholds!.filter(x => x <= y.lower)), this._IntervalFactory.meta.m);
@@ -83,11 +124,13 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         console.log("Widening", x.toString(), y.toString(), "[", newLower, newUpper, "]", this.thresholds?.toString())
         return this._IntervalFactory.new(newLower, newUpper);
     };
+
     narrowing = (x: Interval, y: Interval): Interval => {
         const newLower = (x.lower === this._IntervalFactory.meta.m ? y.lower : x.lower);
         const newUpper = (x.upper === this._IntervalFactory.meta.n ? y.upper : x.upper);
         return this._IntervalFactory.new(newLower, newUpper)
     };
+
     E(expr: ArithmeticExpression, aState: AbstractProgramState<Interval>): { state: AbstractProgramState<Interval>, value: Interval } {
         if (expr instanceof Numeral) {
             return { state: aState.clone(), value: this.alpha(new Set(expr.value, expr.value)) };
@@ -131,6 +174,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             value: super.E(expr, aState)
         }
     }
+
     private thresholds: Array<number> | undefined = undefined;
     S(stmt: Statement, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> {
         let Body = (stmt: Statement, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
@@ -226,7 +270,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             if (stmt instanceof RepeatUntilLoop) {
                 // B#[b](lfp(λx.s# ∨ S​(D#[S]∘B#[not b])x)) ∘ D#[S]s
                 stmt.pre = (aState.toString());
-                let currentState: AbstractProgramState<Interval> = this.S(stmt.body, this.C(stmt.guard.negate(), aState.clone()), flags);
+                let currentState: AbstractProgramState<Interval> = this.S(stmt.body, aState.clone(), flags);
                 let prevState: AbstractProgramState<Interval>;
                 console.log("Fixpoint ---------------------------------")
                 do {
@@ -257,7 +301,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     do {
                         prevState = currentState.clone();
                         let u1 = prevState;
-                        let u2 = this.S(stmt.body, this.C(stmt.guard.negate(), currentState), flags);
+                        let u2 = this.C(stmt.guard.negate(), currentState);
                         currentState = this._StateAbstractDomain.SetOperators.intersection(u1, u2);
                         console.log("Intersection between", u1.toString(), " and ", u2.toString(), " resulted in ", currentState.toString())
                         currentState = this._StateAbstractDomain.narrowing(prevState, currentState);
@@ -267,8 +311,8 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 }
                 console.log("Narrowing -----------------------------end")
                 console.log("\n")
-                console.log("Filtering with guard ---------------------")
-                console.log("Negated guard:", stmt.guard.toString())
+                console.log("Filtering with guard negated -------------")
+                console.log("Negated guard:", stmt.guard.negate().toString())
                 console.log("Narrowed state:", currentState.toString())
                 let ret = this.C(stmt.guard, currentState);
                 console.log("Result:", ret.toString())
@@ -288,38 +332,23 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                         prevState,
                         this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, prevState), flags), flags)
                     );
-                    if (flags.widening) currentState = this._StateAbstractDomain.widening(prevState, currentState);
+                    if (flags.narrowing) currentState = this._StateAbstractDomain.widening(prevState, currentState);
                 } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                
-                stmt.inv = currentState.toString();
-                console.log("Fixpoint found:", currentState.toString())
-                console.log("\n")
-                console.log("Fixpoint ------------------------------end")
-                console.log("\n")
-                console.log("Narrowing --------------------------------")
-                console.log("\n")
+                stmt.inv = (currentState.toString());
                 if (flags.narrowing) {
+                    prevState = aState.clone();
                     do {
-                        prevState = currentState.clone();
-                        let u1 = prevState;
-                        let u2 = this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, prevState), flags), flags)
-                        currentState = this._StateAbstractDomain.SetOperators.intersection(
-                            u1, u2
+                        currentState = this._StateAbstractDomain.narrowing(
+                            currentState,
+                            this._StateAbstractDomain.SetOperators.union(
+                                prevState,
+                                this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, currentState), flags), flags)
+                            )
                         );
-                        console.log("Intersection between", u1.toString(), " and ", u2.toString(), " resulted in ", currentState.toString())
-                        currentState = this._StateAbstractDomain.narrowing(prevState, currentState);
-                        console.log("After narrowing:", currentState.toString())
+                        prevState = currentState.clone();
                     } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                    stmt.inv = currentState.toString();
                 }
-                console.log("Narrowing -----------------------------end")
-                console.log("\n")
-                console.log("Filtering with guard negated -------------")
-                console.log("Negated guard:", stmt.guard.negate().toString())
-                console.log("Narrowed state:", currentState.toString())
                 let ret = this.C(stmt.guard.negate(), currentState);
-                console.log("Result:", ret.toString())
-                console.log("Filtering with guard negated -------------")
                 stmt.post = (ret.toString());
                 return ret;
             }
@@ -336,4 +365,5 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         }
         return Body(stmt, aState, flags);
     }
+    
 };
