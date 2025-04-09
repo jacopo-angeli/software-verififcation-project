@@ -54,7 +54,7 @@ export class ProgramState {
     return ret;
   }
 
-  equalsTo(other: ProgramState): boolean {
+  eq(other: ProgramState): boolean {
     if (this.size() !== other.size()) return false;
     let keys = Array.from(this.state.keys());
     for (let i = 0; i < this.size(); i++) {

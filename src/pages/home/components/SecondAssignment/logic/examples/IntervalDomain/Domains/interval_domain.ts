@@ -122,7 +122,6 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
         if (x.isBottom()) return y;
         const newLower = (x.lower <= y.lower) ? x.lower : Math.max(...(this.thresholds!.filter(x => x <= y.lower)), this._IntervalFactory.meta.m);
         const newUpper = (x.upper >= y.upper) ? x.upper : Math.min(...(this.thresholds!.filter(x => x >= y.upper)), this._IntervalFactory.meta.n);
-        console.log("Widening", x.toString(), y.toString(), "[", newLower, newUpper, "]", this.thresholds?.toString())
         return this._IntervalFactory.new(newLower, newUpper);
     };
 
@@ -220,12 +219,10 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                     prevState = currentState.clone();
 
                     //currentState = prevState LUB D#[body](B#[guard])
-                    let u1 = prevState;
-                    let u2 = this.S(stmt.body, this.C(stmt.guard, currentState), flags);
                     currentState = this._StateAbstractDomain.SetOperators.union(
-                        u1, u2
+                        prevState, 
+                        this.S(stmt.body, this.C(stmt.guard, currentState), flags),
                     );
-                    console.log("Union between", u1.toString(), " and ", u2.toString(), " resulted in", currentState.toString())
 
                     if (flags.widening) {
                         console.log("Widening(", prevState.toString(), ",", currentState.toString(), ") :", this._StateAbstractDomain.widening(prevState, currentState).toString())
@@ -247,7 +244,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                         prevState = currentState.clone();
                         currentState = this._StateAbstractDomain.narrowing(
                             prevState,
-                            this._StateAbstractDomain.SetOperators.union(
+                            this._StateAbstractDomain.SetOperators.intersection(
                                 prevState,
                                 this.S(stmt.body, this.C(stmt.guard, currentState), flags),
                             )
@@ -303,7 +300,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                         prevState = currentState.clone();
                         currentState = this._StateAbstractDomain.narrowing(
                             prevState,
-                            this._StateAbstractDomain.SetOperators.union(
+                            this._StateAbstractDomain.SetOperators.intersection(
                                 prevState,
                                 this.S(stmt.body, this.C(stmt.guard.negate(), currentState), flags),
                             )
@@ -358,7 +355,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                         prevState = currentState.clone();
                         currentState = this._StateAbstractDomain.narrowing(
                             prevState,
-                            this._StateAbstractDomain.SetOperators.union(
+                            this._StateAbstractDomain.SetOperators.intersection(
                                 prevState,
                                 this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, prevState), flags), flags)
                             )

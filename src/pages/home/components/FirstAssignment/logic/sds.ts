@@ -39,7 +39,7 @@ class Sds {
                 prev = current.copy();
                 current = Sds.eval(new IfThenElse(stmt.guard, stmt.body, new Skip()), prev.copy(), iterationLimit - 1);
                 iterationLimit--;
-            } while (!prev.equalsTo(current) && iterationLimit > 0)
+            } while (!prev.eq(current) && iterationLimit > 0)
             return current;
         }
 
@@ -53,7 +53,7 @@ class Sds {
                 prev = current.copy();
                 current = Sds.eval(new IfThenElse(stmt.guard, new Skip(), stmt.body), prev.copy(), iterationLimit - 1);
                 iterationLimit--;
-            } while (!prev.equalsTo(current) && iterationLimit > 0)
+            } while (!prev.eq(current) && iterationLimit > 0)
             return current;
         }
 
@@ -67,7 +67,7 @@ class Sds {
                 prev = current.copy();
                 current = Sds.eval(new IfThenElse(stmt.guard, new Concatenation(stmt.body, stmt.incrementStatement), new Skip()), prev.copy(), iterationLimit);
                 iterationLimit--;
-            } while (!prev.equalsTo(current) && iterationLimit > 0)
+            } while (!prev.eq(current) && iterationLimit > 0)
             return current;
         }
 
