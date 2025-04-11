@@ -5,7 +5,7 @@ import { EmptySet, Set } from "../types/set";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Numeral, Variable } from "../../../../../../model/while+/arithmetic_expression";
 import { AbstractProgramState } from "../../../../model/types/abstract_state";
 import { ConcreteValue } from "../../../../model/types/concrete_value";
-import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../../../../model/while+/statement";
+import { Assignment, Concatenation, IfThenElse, Skip, Statement, WhileLoop } from "../../../../../../model/while+/statement";
 import { BooleanExpression } from "../../../../../../model/while+/boolean_expression";
 
 export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
@@ -244,8 +244,8 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                         prevState = currentState.clone();
                         currentState = this._StateAbstractDomain.narrowing(
                             prevState,
-                            this._StateAbstractDomain.SetOperators.intersection(
-                                prevState,
+                            this._StateAbstractDomain.SetOperators.union(
+                                aState,
                                 this.S(stmt.body, this.C(stmt.guard, currentState), flags),
                             )
                         )
@@ -258,117 +258,6 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
                 console.log("Filtering with guard negated -------------")
                 console.log("Negated guard:", stmt.guard.negate().toString())
                 let ret = this.C(stmt.guard.negate(), currentState);
-                stmt.post = (ret.toString());
-                console.log("Result:", ret.toString())
-                console.log("Filtering with guard negated --------- end")
-                return ret;
-            }
-
-            if (stmt instanceof RepeatUntilLoop) {
-                // B#[b](lfp(λx.s# ∨ S​(D#[S]∘B#[not b])x)) ∘ D#[S]s
-                let currentState: AbstractProgramState<Interval> = this.S(stmt.body, aState.clone(), flags);
-                let prevState: AbstractProgramState<Interval>;
-
-                console.log("Fixpoint search --------------------------")
-                stmt.pre = (currentState.toString());
-                do {
-                    prevState = currentState.clone();
-
-                    //currentState = prevState LUB D#[body](B#[guard])
-                    currentState = this._StateAbstractDomain.SetOperators.union(
-                        prevState, 
-                        this.S(stmt.body, this.C(stmt.guard.negate(), currentState), flags)
-                    );
-
-                    if (flags.widening) {
-                        console.log("Widening(", prevState.toString(), ",", currentState.toString(), ") :", this._StateAbstractDomain.widening(prevState, currentState).toString())
-                        console.log("\n")
-                        currentState = this._StateAbstractDomain.widening(prevState, currentState);
-                    }
-
-                } while (!this._StateAbstractDomain.eq(prevState, currentState));
-
-                stmt.inv = currentState.toString();
-                console.log("Fixpoint found:", currentState.toString())
-                console.log("\n")
-                console.log("Fixpoint ------------------------------end")
-                console.log("\n")
-                console.log("Narrowing --------------------------------")
-                console.log("\n")
-                if (flags.narrowing) {
-                    do {
-                        prevState = currentState.clone();
-                        currentState = this._StateAbstractDomain.narrowing(
-                            prevState,
-                            this._StateAbstractDomain.SetOperators.intersection(
-                                prevState,
-                                this.S(stmt.body, this.C(stmt.guard.negate(), currentState), flags),
-                            )
-                        )
-                    } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                    stmt.inv = currentState.toString();
-                }
-                console.log("Result: ", currentState.toString());
-                console.log("Narrowing -----------------------------end")
-                console.log("\n")
-                console.log("Filtering with guard negated -------------")
-                console.log("Negated guard:", stmt.guard.negate().toString())
-                let ret = this.C(stmt.guard, currentState);
-                stmt.post = (ret.toString());
-                console.log("Result:", ret.toString())
-                console.log("Filtering with guard negated --------- end")
-                return ret;
-            }
-
-            if (stmt instanceof ForLoop) {
-                // Initialization: Execute S
-                let currentState: AbstractProgramState<Interval> = this.S(stmt.initialStatement, aState, flags);
-                let prevState: AbstractProgramState<Interval>;
-
-                console.log("Fixpoint search --------------------------")
-                stmt.pre = (currentState.toString());
-                do {
-                    prevState = currentState.clone();
-                    //currentState = prevState LUB D#[body](B#[guard])
-                    currentState = this._StateAbstractDomain.SetOperators.union(
-                        prevState,
-                        this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, prevState), flags), flags)
-                    );
-
-                    if (flags.widening) {
-                        console.log("Widening(", prevState.toString(), ",", currentState.toString(), ") :", this._StateAbstractDomain.widening(prevState, currentState).toString())
-                        console.log("\n")
-                        currentState = this._StateAbstractDomain.widening(prevState, currentState);
-                    }
-
-                } while (!this._StateAbstractDomain.eq(prevState, currentState));
-
-                stmt.inv = currentState.toString();
-                console.log("Fixpoint found:", currentState.toString())
-                console.log("\n")
-                console.log("Fixpoint ------------------------------end")
-                console.log("\n")
-                console.log("Narrowing --------------------------------")
-                console.log("\n")
-                if (flags.narrowing) {
-                    do {
-                        prevState = currentState.clone();
-                        currentState = this._StateAbstractDomain.narrowing(
-                            prevState,
-                            this._StateAbstractDomain.SetOperators.intersection(
-                                prevState,
-                                this.S(stmt.incrementStatement, this.S(stmt.body, this.C(stmt.guard, prevState), flags), flags)
-                            )
-                        )
-                    } while (!this._StateAbstractDomain.eq(prevState, currentState));
-                    stmt.inv = currentState.toString();
-                }
-                console.log("Result: ", currentState.toString());
-                console.log("Narrowing -----------------------------end")
-                console.log("\n")
-                console.log("Filtering with guard negated -------------")
-                console.log("Negated guard:", stmt.guard.negate().toString())
-                let ret = this.C(stmt.guard, currentState);
                 stmt.post = (ret.toString());
                 console.log("Result:", ret.toString())
                 console.log("Filtering with guard negated --------- end")

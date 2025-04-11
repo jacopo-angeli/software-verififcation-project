@@ -11,9 +11,13 @@ export abstract class Statement extends AST {
     return ' '.repeat(level * 2);
   }
   abstract annotatedProgram(level: number): string;
+  abstract clone(): Statement;
 }
 
 export class Assignment extends Statement {
+  clone(): Assignment {
+    return new Assignment(this.variable.clone(), this.value.clone())
+  }
   constructor(
     public variable: Variable,
     public value: ArithmeticExpression) {
@@ -21,6 +25,9 @@ export class Assignment extends Statement {
   }
   public annotatedProgram(level: number = 0): string {
     return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}${this.variable.name}=${this.value}\n${Statement.tab(level)}// [POST] ${this.post}`;
+  }
+  toString() {
+    return `${this.variable.name}=${this.value.toString()}`;
   }
   iter(fn: (node: AST) => void): void {
     fn(this);
@@ -36,6 +43,9 @@ export class Assignment extends Statement {
 }
 
 export class Skip extends Statement {
+  clone(): Skip {
+    return new Skip();
+  }
   public annotatedProgram(level: number = 0): string {
     return `${Statement.tab(level)}skip`;
   }
@@ -48,13 +58,16 @@ export class Skip extends Statement {
 }
 
 export class Concatenation extends Statement {
+  clone(): Concatenation {
+    return new Concatenation(this.f.clone(), this.g.clone());
+  }
   constructor(
     public f: Statement,
     public g: Statement) {
     super();
   }
   public annotatedProgram(level: number = 0): string {
-    return `${this.f.annotatedProgram(level)};\n${this.g.annotatedProgram(level)}`;
+    return `${this.f.annotatedProgram(level)}\n${this.g.annotatedProgram(level)}`;
   }
   iter(fn: (node: AST) => void): void {
     fn(this);
@@ -70,6 +83,14 @@ export class Concatenation extends Statement {
 }
 
 export class IfThenElse extends Statement {
+  clone(): IfThenElse {
+    return new IfThenElse(
+      this.guard.clone(),
+      this.thenB.clone(),
+      this.elseB.clone()
+    );
+  }
+
   constructor(
     public guard: BooleanExpression,
     public thenB: Statement,
@@ -106,6 +127,13 @@ export abstract class Loop extends Statement {
 }
 
 export class WhileLoop extends Loop {
+  clone(): WhileLoop {
+    return new WhileLoop(
+      this.body.clone(),
+      this.guard.clone()
+    );
+  }
+
   public annotatedProgram(level: number = 0): string {
     return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}while(${this.guard.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
@@ -125,8 +153,15 @@ export class WhileLoop extends Loop {
 }
 
 export class RepeatUntilLoop extends Loop {
+  clone(): RepeatUntilLoop {
+    return new RepeatUntilLoop(
+      this.body.clone(),
+      this.guard.clone()
+    );
+  }
+
   public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}${this.pre}\n${Statement.tab(level)}repeat{\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}${Statement.tab(level + 1)}${this.inv}\n}until(${this.guard.toString()})\n${Statement.tab(level)}${this.post}`;
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}repeat{\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}${Statement.tab(level + 1)}// [INV] ${this.inv}\n}until(${this.guard.toString()})\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
@@ -144,6 +179,15 @@ export class RepeatUntilLoop extends Loop {
 }
 
 export class ForLoop extends Loop {
+  clone(): ForLoop {
+    return new ForLoop(
+      this.body.clone(),
+      this.guard.clone(),
+      this.initialStatement.clone(),
+      this.incrementStatement.clone()
+    );
+  }
+
   constructor(
     body: Statement,
     guard: BooleanExpression,
@@ -152,7 +196,7 @@ export class ForLoop extends Loop {
   ) { super(body, guard); }
 
   public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}${this.pre}\n${Statement.tab(level)}for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${Statement.tab(level + 1)}${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}${this.post}`;
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {

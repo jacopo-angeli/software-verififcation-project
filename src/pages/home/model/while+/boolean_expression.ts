@@ -5,12 +5,16 @@ import { AST } from "./ast";
 export abstract class BooleanExpression extends AST {
   abstract negate(): BooleanExpression;
   abstract eleq0(): void;
+  abstract clone(): BooleanExpression;
 }
 
 /**
  * Represents a binary boolean operator (e.g., <, <=, >, >=, ==, !=).
  */
 export class BooleanBinaryOperator extends BooleanExpression {
+  clone(): BooleanBinaryOperator {
+    return new BooleanBinaryOperator(this.left.clone(),this.right.clone(), this.operator)
+  }
   constructor(
     public left: ArithmeticExpression | BooleanExpression,
     public right: ArithmeticExpression | BooleanExpression,
@@ -177,6 +181,9 @@ export class BooleanBinaryOperator extends BooleanExpression {
 }
 
 export class BooleanUnaryOperator extends BooleanExpression {
+  clone(): BooleanUnaryOperator {
+    return new BooleanUnaryOperator(this.booleanExpression.clone(), this.operator);
+  }
   constructor(
     public booleanExpression: BooleanExpression,
     public operator: Token
@@ -204,6 +211,10 @@ export class BooleanUnaryOperator extends BooleanExpression {
 }
 
 export class Boolean extends BooleanExpression {
+  clone(): BooleanExpression {
+    return new Boolean(this.value);
+  }
+
   constructor(public value: boolean) {
     super();
   }

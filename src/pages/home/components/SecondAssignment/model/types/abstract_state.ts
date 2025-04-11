@@ -17,9 +17,9 @@ export class AbstractProgramState<T extends AbstractValue> {
 
     toString(): string {
         if (this._state.size === 0) return "{ }";
-        if (this.isBottom()) return `⊥ : { ${Array.from(this._state.keys()).map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).join(", ")} }`;
-        if (this.isTop()) return `T : { ${Array.from(this._state.keys()).map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).join(", ")} }`;
-        return `{ ${Array.from(this._state.keys()).map((k) => { return `${k} : ${this.lookup(k).toString()}`; }).join(", ")} }`;
+        if (this.isBottom()) return `⊥: {${Array.from(this._state.keys()).map((k) => { return `${k}: ${this.lookup(k).toString()}`; }).join("; ")}}`;
+        if (this.isTop()) return `T: {${Array.from(this._state.keys()).map((k) => { return `${k}: ${this.lookup(k).toString()}`; }).join("; ")}}`;
+        return `{${Array.from(this._state.keys()).map((k) => { return `${k}: ${this.lookup(k).toString()}`; }).join("; ")}}`;
     };
 
     isBottom(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc || (this._state.get(k as string) as T).isBottom()}, false); }

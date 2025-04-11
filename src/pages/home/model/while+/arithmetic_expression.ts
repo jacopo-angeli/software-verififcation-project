@@ -1,9 +1,18 @@
 import { Token } from "../token";
 import { AST } from "./ast";
 
-export abstract class ArithmeticExpression extends AST { }
+export abstract class ArithmeticExpression extends AST { 
+  abstract clone() : ArithmeticExpression;
+}
 
 export class ArithmeticBinaryOperator extends ArithmeticExpression {
+  clone(): ArithmeticBinaryOperator {
+    return new ArithmeticBinaryOperator(
+      this.leftOperand.clone(),
+      this.rightOperand.clone(),
+      this.operator
+    )
+  }
   constructor(
     public leftOperand: ArithmeticExpression,
     public rightOperand: ArithmeticExpression,
@@ -32,6 +41,12 @@ export class ArithmeticBinaryOperator extends ArithmeticExpression {
 }
 
 export class ArithmeticUnaryOperator extends ArithmeticExpression {
+  clone(): ArithmeticUnaryOperator {
+    return new ArithmeticUnaryOperator(
+      this.operand.clone(),
+      this.operator
+    )
+  }
   constructor(
     public operand: ArithmeticExpression,
     public operator: Token,
@@ -52,6 +67,9 @@ export class ArithmeticUnaryOperator extends ArithmeticExpression {
 }
 
 export class Numeral extends ArithmeticExpression {
+  clone(): ArithmeticExpression {
+    return new Numeral(this.value)
+  }
 
   constructor(
     public value: number,
@@ -70,6 +88,9 @@ export class Numeral extends ArithmeticExpression {
 }
 
 export class Variable extends ArithmeticExpression {
+  clone(): Variable {
+    return new Variable(this.name);
+  }
 
   constructor(
     public name: string
@@ -89,6 +110,9 @@ export class Variable extends ArithmeticExpression {
 }
 
 export class IncrementOperator extends ArithmeticExpression {
+  clone(): IncrementOperator {
+    return new IncrementOperator(this.variable.clone());
+  }
   
   constructor(
     public variable: Variable,
@@ -109,6 +133,10 @@ export class IncrementOperator extends ArithmeticExpression {
 }
 
 export class DecrementOperator extends ArithmeticExpression {
+  clone(): DecrementOperator {
+    return new DecrementOperator(this.variable.clone());
+  }
+  
   constructor(
     public variable: Variable,
   ) { super(); }
