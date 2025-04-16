@@ -18,7 +18,7 @@ function App() {
 
 	useEffect(() => {
 		try{
-			fetch("https://raw.githubusercontent.com/jacopo-angeli/software-verififcation-project/refs/heads/main/README.md")
+			fetch("https://raw.githubusercontent.com/jacopo-angeli/software-verififcation-project/refs/heads/main/docs/README.md")
 			.then((res) => res.text())
 			.then((markdown) => {
 				// Optional: only if your README is in HTML

@@ -68,4 +68,11 @@ V             ::= [a-zA-Z_][a-zA-Z0-9_]*
 N             ::= [0-9]+
 
 
-Variable declarations can optionally specify an initial interval using the `var x(a, b)` syntax, which maps to the abstract interval [a, b].
+<section id="abstract">
+  <h2>Abstract Semantics</h2>
+  <p>
+    The concrete semantics are defined denotationally. Each expression or statement is interpreted as a mathematical function
+    over environments, which map variables to integer values.
+  </p>
+
+`<img src="./AbstractSemantics.png" alt="Abstract semantics used in the program"\>`
