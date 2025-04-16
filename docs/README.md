@@ -75,4 +75,4 @@ N             ::= [0-9]+
     over environments, which map variables to integer values.
   </p>
 
-`<img src="./AbstractSemantics.png" alt="Abstract semantics used in the program"\>`
+`<img src="https://github.com/jacopo-angeli/software-verififcation-project/blob/main/docs/AbstractSemantics.png" alt="Abstract semantics used in the program"\>`
