@@ -20,7 +20,7 @@ const numberParser: P.Parser<ArithmeticExpression> = P.regexp(/[0-9]+/)
     .skip(whitespace)
     .desc("number");
 
-const variableParser: P.Parser<ArithmeticExpression> = P.regexp(/[a-z]+/)
+const variableParser: P.Parser<ArithmeticExpression> = P.regexp(/[a-zA-Z_][a-zA-Z0-9_]*/)
     .map((str) => new Variable(str))
     .skip(whitespace)
     .desc("variable");
