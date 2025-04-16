@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Lexer } from "../../../logic/lexer";
-import { Parser } from "../../../logic/parser";
 import { Token } from "../../../model/token";
 import { ProgramState } from "../model/program_state";
 
@@ -10,6 +9,7 @@ import "./FirstAssignment.css";
 import { InitialStateFormatError } from "../../../model/errors";
 import Latex from "react-latex-next";
 import Sds from "../logic/sds";
+import { parseInitialState, parseProgram } from "../../../logic/parser";
 
 const FirstAssignment = () => {
 	var [initialState, setInitialState] = useState("");
@@ -30,11 +30,11 @@ const FirstAssignment = () => {
 		setProgramFormatError("");
 
 		try {
-			let initialStateResult = Parser.parseInitialState(Lexer.tokenize(initialState));
+			let initialStateResult = parseInitialState(Lexer.tokenize(initialState));
 			setInitialStateResult(initialStateResult.copy());
 			let tokenListResult = Lexer.tokenize(program);
 			setTokenList(tokenListResult);
-			let ast = Parser.parse(tokenListResult);
+			let ast = parseProgram(program);
 			let eR = Sds.eval(ast, initialStateResult, isNaN(iterationLimit) ? Number.POSITIVE_INFINITY : iterationLimit);
 			setEvaluationResult(eR);
 		} catch (error) {

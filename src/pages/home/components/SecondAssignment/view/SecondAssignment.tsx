@@ -49,7 +49,6 @@ const SecondAssignment = () => {
 			setResults((prevState) => ({
 				...prevState,
 				abstractProgramState:  CurrentRun.initialState.toString(),
-				tokenList: CurrentRun.tokenList.toString(),
 				dSharpResult: CurrentRun.dSharpResult.toString(),
 				annotatedProgram: CurrentRun.annotatedProgram.replace(/(\\n)/g, "\n"),
 			}));

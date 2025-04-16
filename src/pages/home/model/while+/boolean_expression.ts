@@ -39,10 +39,11 @@ export class BooleanBinaryOperator extends BooleanExpression {
       return expr.left instanceof ArithmeticExpression && expr.right instanceof Numeral && expr.right.value === 0 && expr.operator.type === TokenType.LESSEQ;
     }
     if (eleqForm(this)) {
-      if (this.left instanceof BooleanExpression && this.right instanceof BooleanExpression) {
-        this.left.eleq0()
-        this.right.eleq0()
-      }
+      return;
+    }
+    if (this.left instanceof BooleanExpression && this.right instanceof BooleanExpression) {
+      this.left.eleq0();
+      this.right.eleq0();
       return;
     }
     switch (this.operator.type) {
@@ -131,7 +132,7 @@ export class BooleanBinaryOperator extends BooleanExpression {
         this.operator = new Token(TokenType.OR, "||")
         break;
       default:
-        throw new Error("BooleanBinaryOperator: Invalid operator type.");
+        throw new Error("BooleanBinaryOperator: Invalid operator type : " + this.operator.value.toString());
     }
 
     this.right = new Numeral(0);

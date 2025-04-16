@@ -1,6 +1,5 @@
 import { Lexer } from "../../../logic/lexer";
-import { Parser } from "../../../logic/parser";
-import { Token } from "../../../model/token";
+import { parseAbstractState, parseProgram} from "../../../logic/parser";
 import { BooleanBinaryOperator } from "../../../model/while+/boolean_expression";
 import { Concatenation, ForLoop, RepeatUntilLoop, Statement, WhileLoop, } from "../../../model/while+/statement";
 import { AbstractProgramState } from "../model/types/abstract_state";
@@ -12,7 +11,6 @@ export class AI_INT {
 
     public static api = {
         WebApp: (program: string, initialState: string, min: number, max: number, widening: boolean, narrowing: boolean): {
-            tokenList: Token[];
             ast: Statement;
             initialState: AbstractProgramState<Interval>;
             annotatedProgram: string;
@@ -20,13 +18,13 @@ export class AI_INT {
         } => {
             let _IntervalFactory = new IntervalFactory({ m: min, n: max });
             let _IntervalDomain = new IntervalDomain(new IntervalFactory({ m: min, n: max }));
-            let tokenList = Lexer.tokenize(program);
-            let ast = Parser.parse(tokenList);
+            let ast = parseProgram(program);
+            console.log(ast.annotatedProgram(0));
             ast.iter(node => {
-                if (node instanceof BooleanBinaryOperator) node.eleq0();
+                if (node instanceof BooleanBinaryOperator) {  node.eleq0(); }
             })
-            let initState = Parser.parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory);
-            let asx : Statement = ast.map(node => {
+            let initState = parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory);
+            let asx: Statement = ast.map(node => {
                 if (node instanceof ForLoop) {
                     return new Concatenation(
                         node.initialStatement.clone(),
@@ -38,7 +36,7 @@ export class AI_INT {
                             node.guard.clone()
                         )
                     )
-                } else if (node instanceof RepeatUntilLoop){
+                } else if (node instanceof RepeatUntilLoop) {
                     return new Concatenation(
                         node.body.clone(),
                         new WhileLoop(
@@ -46,7 +44,7 @@ export class AI_INT {
                             node.guard.negate()
                         )
                     )
-                } 
+                }
                 return node.clone()
             }) as Statement;
             let dSharpResult = _IntervalDomain.S(
@@ -55,9 +53,8 @@ export class AI_INT {
                 { widening: widening, narrowing: narrowing }
             );
             return {
-                tokenList: tokenList,
                 ast: ast,
-                initialState: Parser.parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory),
+                initialState: parseAbstractState(Lexer.tokenize(initialState), _IntervalFactory),
                 dSharpResult: dSharpResult,
                 annotatedProgram: asx.annotatedProgram(0),
             }

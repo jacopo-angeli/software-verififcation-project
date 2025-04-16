@@ -1,17 +1,13 @@
-import "./SoftwareVerification.css";
-
-import FirstAssignment from "../components/FirstAssignment/view/FirstAssignment";
-import SecondAssignment from "../components/SecondAssignment/view/SecondAssignment";
-
 const SofwareVerificationPage = () => {
-	const title = "Software verification exam- University of Padua - A.Y. 25/26"
 	return (
-		<div className="software-verification-page">
-			<h1>{title}</h1>
-			<FirstAssignment />
-			<hr id="divider"/>
-			<SecondAssignment />
-		</div>
+		<main className="min-h-screen bg-gray-50 p-8">
+			<div className="max-w-5xl mx-auto space-y-8">
+				<header className="text-center">
+					<h1 className="text-4xl font-bold text-gray-800">Interval Analyzer</h1>
+					<p className="text-gray-500 mt-2">Static analysis using interval abstraction</p>
+				</header>
+			</div>
+		</main>
 	);
 };
 

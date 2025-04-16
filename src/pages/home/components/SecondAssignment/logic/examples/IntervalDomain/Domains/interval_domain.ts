@@ -5,7 +5,7 @@ import { EmptySet, Set } from "../types/set";
 import { ArithmeticBinaryOperator, ArithmeticExpression, ArithmeticUnaryOperator, DecrementOperator, IncrementOperator, Numeral, Variable } from "../../../../../../model/while+/arithmetic_expression";
 import { AbstractProgramState } from "../../../../model/types/abstract_state";
 import { ConcreteValue } from "../../../../model/types/concrete_value";
-import { Assignment, Concatenation, IfThenElse, Skip, Statement, WhileLoop } from "../../../../../../model/while+/statement";
+import { Assignment, Concatenation, Declaration, IfThenElse, Initialization, Skip, Statement, WhileLoop } from "../../../../../../model/while+/statement";
 import { BooleanExpression } from "../../../../../../model/while+/boolean_expression";
 
 export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
@@ -179,6 +179,20 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
     S(stmt: Statement, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> {
         let Body = (stmt: Statement, aState: AbstractProgramState<Interval>, flags: { widening: boolean, narrowing: boolean }): AbstractProgramState<Interval> => {
 
+            if (stmt instanceof Declaration) {
+                stmt.pre = (aState.toString());
+                let ret = aState.clone({ v: stmt.variable.name, val: this._IntervalFactory.Top });
+                stmt.post = (ret.toString());
+                return ret;
+            }
+
+            if (stmt instanceof Initialization) {
+                stmt.pre = (aState.toString());
+                let ret = aState.clone({ v: stmt.variable.name, val: this._IntervalFactory.new(stmt.l, stmt.u) });
+                stmt.post = (ret.toString());
+                return ret;
+            }
+
             if (stmt instanceof Assignment) {
                 stmt.pre = (aState.toString());
                 let ret = (this.E(stmt.variable, aState.clone()).state.update(stmt.variable.name, this.E(stmt.value, aState).value));
@@ -220,7 +234,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
 
                     //currentState = prevState LUB D#[body](B#[guard])
                     currentState = this._StateAbstractDomain.SetOperators.union(
-                        prevState, 
+                        prevState,
                         this.S(stmt.body, this.C(stmt.guard, currentState), flags),
                     );
 

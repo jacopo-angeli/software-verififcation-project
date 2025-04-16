@@ -14,6 +14,49 @@ export abstract class Statement extends AST {
   abstract clone(): Statement;
 }
 
+export class Declaration extends Statement {
+  annotatedProgram(level: number): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\nvar ${this.variable.name}\n${Statement.tab(level)}// [POST] ${this.post}`;
+  }
+  clone(): Declaration {
+    return new Declaration(this.variable);
+  }
+  map(fn: (node: AST) => AST): AST {
+    return fn(new Declaration(fn(this.variable) as Variable))
+  }
+  iter(fn: (node: AST) => void): void {
+    fn(this);
+    this.variable.iter(fn);
+  }
+  constructor(
+    public variable: Variable
+  ) { super() }
+}
+export class Initialization extends Statement {
+  annotatedProgram(level: number): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\nvar ${this.variable.name}(${this.l}, ${this.u})\n${Statement.tab(level)}// [POST] ${this.post}\n`
+  }
+  clone(): Initialization {
+    return new Initialization(this.variable.clone(), this.l, this.u);
+  }
+  map(fn: (node: AST) => AST): AST {
+    return fn(new Initialization(
+      fn(this.variable) as Variable,
+      this.l,
+      this.u
+    ))
+  }
+  iter(fn: (node: AST) => void): void {
+    fn(this);
+    this.variable.iter(fn);
+  }
+  constructor(
+    public variable : Variable,
+    public l : number,
+    public u : number,
+  ){super()}
+}
+
 export class Assignment extends Statement {
   clone(): Assignment {
     return new Assignment(this.variable.clone(), this.value.clone())
