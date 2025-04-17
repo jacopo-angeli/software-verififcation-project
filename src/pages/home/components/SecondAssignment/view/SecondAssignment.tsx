@@ -44,11 +44,10 @@ const SecondAssignment = () => {
 		}));
 
 		try {
-			let CurrentRun = AI_INT.api.WebApp(formFields.program, formFields.abstractState, formFields.lowerBound, formFields.upperBound, formFields.widening, formFields.narrowing);
+			let CurrentRun = AI_INT.api.WebApp(formFields.program, formFields.lowerBound, formFields.upperBound, formFields.widening, formFields.narrowing);
 			console.log(CurrentRun);
 			setResults((prevState) => ({
 				...prevState,
-				abstractProgramState:  CurrentRun.initialState.toString(),
 				dSharpResult: CurrentRun.dSharpResult.toString(),
 				annotatedProgram: CurrentRun.annotatedProgram.replace(/(\\n)/g, "\n"),
 			}));

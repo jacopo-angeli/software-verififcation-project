@@ -22,19 +22,19 @@ export class AbstractProgramState<T extends AbstractValue> {
         return `{${Array.from(this._state.keys()).map((k) => { return `${k}: ${this.lookup(k).toString()}`; }).join("; ")}}`;
     };
 
-    isBottom(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc || (this._state.get(k as string) as T).isBottom()}, false); }
-    isTop(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc && (this._state.get(k as string) as T).isTop()}, true); }
-    toBottom(): AbstractProgramState<T>{
-        let ret =  new Map<string, T>();
+    isBottom(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc || (this._state.get(k as string) as T).isBottom() }, false); }
+    isTop(): boolean { return Array.from(this._state.keys()).reduce((acc, k) => { return acc && (this._state.get(k as string) as T).isTop() }, true); }
+    toBottom(): AbstractProgramState<T> {
+        let ret = new Map<string, T>();
         Array.from(this._state.keys()).forEach(e => ret.set(e, this.lookup(e).toBottom() as T));
         return new AbstractProgramState<T>(ret);
     }
-    toTop<T extends AbstractValue>(): AbstractProgramState<T>{
-        let ret =  new Map<string, T>();
+    toTop<T extends AbstractValue>(): AbstractProgramState<T> {
+        let ret = new Map<string, T>();
         Array.from(this._state.keys()).forEach(e => ret.set(e, this.lookup(e).toTop() as T));
         return new AbstractProgramState<T>(ret);
     }
-    
+
     variables(): Array<string> {
         return Array.from(this._state.keys());
     };
@@ -44,12 +44,16 @@ export class AbstractProgramState<T extends AbstractValue> {
     // ---------------------------------------------------------------------------------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
-    public clone(wwhit?: { v: string, val: T }): AbstractProgramState<T> {
+    public clone(wwith?: { v: string, val: T }): AbstractProgramState<T> {
         var ret = new Map<string, T>();
-        this._state.forEach((value, key) => {
-            if (wwhit && key === wwhit.v) ret.set(key, wwhit.val);
-            else ret.set(key, value);
-        });
+        if (this._state.size === 0) {
+            if (wwith) ret.set(wwith.v, wwith.val)
+        } else {
+            this._state.forEach((value, key) => {
+                if (wwith && key === wwith.v) ret.set(key, wwith.val);
+                else ret.set(key, value);
+            });
+        }
         return new AbstractProgramState<T>(ret);
     };
 }

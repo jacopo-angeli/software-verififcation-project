@@ -10,13 +10,13 @@ export abstract class Statement extends AST {
   protected static tab(level: number = 0): string {
     return ' '.repeat(level * 2);
   }
-  abstract annotatedProgram(level: number): string;
+  annotatedProgram(level: number, semicolon: boolean = false): string { throw Error("Unimplemented error.") };
   abstract clone(): Statement;
 }
 
 export class Declaration extends Statement {
-  annotatedProgram(level: number): string {
-    return `${Statement.tab(level)}// [PRE] ${this.pre}\nvar ${this.variable.name}\n${Statement.tab(level)}// [POST] ${this.post}`;
+  annotatedProgram(level: number, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\nvar ${this.variable.name}${semicolon ? ";" : ""}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
   clone(): Declaration {
     return new Declaration(this.variable);
@@ -33,8 +33,8 @@ export class Declaration extends Statement {
   ) { super() }
 }
 export class Initialization extends Statement {
-  annotatedProgram(level: number): string {
-    return `${Statement.tab(level)}// [PRE] ${this.pre}\nvar ${this.variable.name}(${this.l}, ${this.u})\n${Statement.tab(level)}// [POST] ${this.post}\n`
+  annotatedProgram(level: number, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\nvar ${this.variable.name}(${this.l}, ${this.u})${semicolon ? ";" : ""}\n${Statement.tab(level)}// [POST] ${this.post}`
   }
   clone(): Initialization {
     return new Initialization(this.variable.clone(), this.l, this.u);
@@ -51,10 +51,10 @@ export class Initialization extends Statement {
     this.variable.iter(fn);
   }
   constructor(
-    public variable : Variable,
-    public l : number,
-    public u : number,
-  ){super()}
+    public variable: Variable,
+    public l: number,
+    public u: number,
+  ) { super() }
 }
 
 export class Assignment extends Statement {
@@ -66,8 +66,8 @@ export class Assignment extends Statement {
     public value: ArithmeticExpression) {
     super();
   }
-  public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}${this.variable.name}=${this.value}\n${Statement.tab(level)}// [POST] ${this.post}`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}${this.variable.name}=${this.value}${semicolon ? ";" : ""}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
   toString() {
     return `${this.variable.name}=${this.value.toString()}`;
@@ -89,8 +89,8 @@ export class Skip extends Statement {
   clone(): Skip {
     return new Skip();
   }
-  public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}skip`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}skip${semicolon ? ";" : ""}`;
   }
   iter(fn: (node: AST) => void): void {
     fn(this);
@@ -109,8 +109,8 @@ export class Concatenation extends Statement {
     public g: Statement) {
     super();
   }
-  public annotatedProgram(level: number = 0): string {
-    return `${this.f.annotatedProgram(level)}\n${this.g.annotatedProgram(level)}`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${this.f.annotatedProgram(level, true)}\n${this.g.annotatedProgram(level)}`;
   }
   iter(fn: (node: AST) => void): void {
     fn(this);
@@ -140,8 +140,8 @@ export class IfThenElse extends Statement {
     public elseB: Statement
   ) { super(); }
 
-  public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}if(${this.guard.toString()})then{\n${this.thenB.annotatedProgram(level + 1)}\n${Statement.tab(level)}}else{\n${this.elseB.annotatedProgram(level + 1)}\n${Statement.tab(level)}}`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}if(${this.guard.toString()})then{\n${this.thenB.annotatedProgram(level + 1)}\n${Statement.tab(level)}}else{\n${this.elseB.annotatedProgram(level + 1)}\n${Statement.tab(level)}}${semicolon ? ";" : ""}`;
   }
 
   iter(fn: (node: AST) => void): void {
@@ -177,8 +177,8 @@ export class WhileLoop extends Loop {
     );
   }
 
-  public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}while(${this.guard.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}// [POST] ${this.post}`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}while(${this.guard.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}${semicolon ? ";" : ""}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
@@ -203,8 +203,8 @@ export class RepeatUntilLoop extends Loop {
     );
   }
 
-  public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}repeat{\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}${Statement.tab(level + 1)}// [INV] ${this.inv}\n}until(${this.guard.toString()})\n${Statement.tab(level)}// [POST] ${this.post}`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}repeat{\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}${Statement.tab(level + 1)}// [INV] ${this.inv}\n}until(${this.guard.toString()})${semicolon ? ";" : ""}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {
@@ -238,8 +238,8 @@ export class ForLoop extends Loop {
     public incrementStatement: Statement,
   ) { super(body, guard); }
 
-  public annotatedProgram(level: number = 0): string {
-    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}\n${Statement.tab(level)}// [POST] ${this.post}`;
+  public annotatedProgram(level: number = 0, semicolon: boolean = false): string {
+    return `${Statement.tab(level)}// [PRE] ${this.pre}\n${Statement.tab(level)}for(${this.initialStatement.toString()};${this.guard.toString()};${this.incrementStatement.toString()}){\n${Statement.tab(level + 1)}// [INV] ${this.inv}\n${this.body.annotatedProgram(level + 1)}\n${Statement.tab(level)}}${semicolon ? ";" : ""}\n${Statement.tab(level)}// [POST] ${this.post}`;
   }
 
   iter(fn: (node: Statement | ArithmeticExpression | BooleanExpression) => void): void {

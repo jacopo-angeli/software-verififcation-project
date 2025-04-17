@@ -3,31 +3,32 @@ import "./index.css";
 import { Editor, type OnMount } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 import { Terminal, BookOpen } from "lucide-react";
+
 import pkg from "../package.json";
+import { AI_INT } from "./pages/home/components/SecondAssignment/logic/program";
 const version = pkg.version;
+type IStandaloneCodeEditor = Parameters<OnMount>[0];
 
 function App() {
-	type IStandaloneCodeEditor = Parameters<OnMount>[0];
-
 	const monacoRef = useRef<IStandaloneCodeEditor | null>(null);
 	const [wikiOpen, setWikiOpen] = useState(false);
-
 	const toggleWiki = () => setWikiOpen((prev) => !prev);
-
 	const [readmeHtml, setReadmeHtml] = useState("");
 
+	const [program, setProgram] = useState("// Some comment");
+
 	useEffect(() => {
-		try{
+		try {
 			fetch("https://raw.githubusercontent.com/jacopo-angeli/software-verififcation-project/refs/heads/main/docs/README.md")
-			.then((res) => res.text())
-			.then((markdown) => {
-				// Optional: only if your README is in HTML
-				setReadmeHtml(markdown);
-			});
-		} catch (e){
-			console.log(e)
+				.then((res) => res.text())
+				.then((markdown) => {
+					// Optional: only if your README is in HTML
+					setReadmeHtml(markdown);
+				});
+		} catch (e) {
+			console.log(e);
 		}
-	  }, []);
+	}, []);
 
 	return (
 		<div className="h-screen flex flex-col">
@@ -77,26 +78,50 @@ function App() {
 				height="100%"
 				width="100%"
 				theme="vs-dark"
-				value={"test"}
+				value={program}
+				onChange={(e) => {
+					setProgram(e ?? "");
+				}}
 				onMount={(editor, monaco) => {
 					monacoRef.current = editor;
 
 					// Custom Command: Run Code
 					editor.addAction({
-						id: "run-code",
-						label: "Run Code",
+						id: "analyze",
+						label: "Analyze",
 						contextMenuOrder: 2,
 						contextMenuGroupId: "1_modification",
 						keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
-						run: () => {
-							console.log("ciao");
+						run: (editor) => {
+							let CurrentRun = AI_INT.api.WebApp(
+								editor
+									.getValue()
+									.replace(/\/\*[\s\S]*?\*\//g, "")
+									.replace(/\/\/.*$/gm, "")
+									.trim(),
+								Number.MIN_SAFE_INTEGER,
+								Number.MAX_SAFE_INTEGER,
+								true,
+								true
+							);
+							console.log(CurrentRun);
+							editor.setValue(CurrentRun.annotatedProgram);
+						},
+					});
+
+					editor.addAction({
+						id: "run",
+						label: "Run",
+						contextMenuOrder: 2,
+						contextMenuGroupId: "1_modification",
+						run: (editor) => {
 						},
 					});
 
 					// Custom Command: Toggle Wiki
 					editor.addAction({
 						id: "toggle-wiki",
-						label: "Toggle Wiki Sidebar",
+						label: "Toggle Wiki",
 						contextMenuOrder: 3,
 						contextMenuGroupId: "navigation",
 						run: () => {

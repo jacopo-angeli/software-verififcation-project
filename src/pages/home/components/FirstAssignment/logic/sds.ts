@@ -1,10 +1,24 @@
 
-import { Assignment, Concatenation, ForLoop, IfThenElse, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../model/while+/statement";
+import { Assignment, Concatenation, Declaration, ForLoop, IfThenElse, Initialization, RepeatUntilLoop, Skip, Statement, WhileLoop } from "../../../model/while+/statement";
 import { ProgramState } from "../model/program_state";
 import A from "./a";
 import B from "./b";
+
+function getRandomInt(min: number, max: number): number {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 class Sds {
     static eval(stmt: Statement, state: ProgramState, iterationLimit: number): ProgramState {
+        if (stmt instanceof Declaration) {
+            return state.copyWith(stmt.variable.name, getRandomInt(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER))
+        }
+        
+        if (stmt instanceof Initialization) {
+            return state.copyWith(stmt.variable.name, getRandomInt(stmt.l, stmt.u));
+        }
 
         if (stmt instanceof Assignment) {
             return (A.eval(stmt.value, state).state).copyWith(stmt.variable.name, A.eval(stmt.value, state).value);

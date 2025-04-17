@@ -182,6 +182,7 @@ export class IntervalDomain extends NumericalAbstractDomainGC<Interval> {
             if (stmt instanceof Declaration) {
                 stmt.pre = (aState.toString());
                 let ret = aState.clone({ v: stmt.variable.name, val: this._IntervalFactory.Top });
+                console.log(ret.toString());
                 stmt.post = (ret.toString());
                 return ret;
             }
